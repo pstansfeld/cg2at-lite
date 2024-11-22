@@ -1,14 +1,6 @@
-[![License: GPL v3](https://img.shields.io/badge/License-GPL_v3-blue)](https://www.gnu.org/licenses/gpl-3.0.html)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/owenvickery/cg2at.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/owenvickery/cg2at/alerts/)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/owenvickery/cg2at.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/owenvickery/cg2at/context:python)
-[![codecov](https://codecov.io/gh/owenvickery/cg2at/branch/master/graph/badge.svg)](https://codecov.io/gh/owenvickery/cg2at)
-[![Github Releases](https://img.shields.io/github/v/release/owenvickery/cg2at)](https://github.com/owenvickery/cg2at/releases)
-[![Anaconda-Server Badge](https://anaconda.org/stansfeld_rg/cg2at/badges/latest_release_date.svg)](https://anaconda.org/stansfeld_rg/cg2at)
-[![Anaconda-Server Badge](https://anaconda.org/stansfeld_rg/cg2at/badges/installer/conda.svg)](https://conda.anaconda.org/stansfeld_rg)
-[![Anaconda-Server Badge](https://anaconda.org/stansfeld_rg/cg2at/badges/downloads.svg)](https://anaconda.org/stansfeld_rg/cg2at)
 
 <p align="center">
-                                   <b>**CG2AT v2 README**</b>
+                                   <b>**A LITE VERSION OF CG2AT v2 README**</b>
 </p>
 If you are using CG2AT2 please acknowledge by using the following citation:
 
@@ -33,11 +25,7 @@ CG2AT2 has been designed for ease of use, where for the majority of users need o
                                    <b>**INSTALL**</b>
 </p>
 
-The best method to get a copy of CG2AT2 is via CONDA which will install the latest version of CG2AT2 including any missing packages already not installed. 
-
-conda install -c stansfeld_rg cg2at
-
-However, CG2AT2 does not require compilation and can be downloaded, ready to run from either Github or Zenodo,
+CG2AT2 does not require compilation and can be downloaded, ready to run from either Github
 
 The addition of CG2AT to the system PATH is advisable for ease of use.
 
@@ -305,12 +293,12 @@ If you know in advance which settings you wish to use, these can be supplied by 
 
 - w   (str) water model         e.g. tip3p
 - fg  (str) fragment databases  e.g. martini_2-2_charmm36
-- ff  (str) forcefield          e.g. charmm36-jul2017
+- ff  (str) forcefield          e.g. charmm36-jul2022
 
 example input.
 
 <pre>
-    python cg2at.py -c cg_input.pdb -a atomistic_input.pdb -w tip3p -fg martini_2-2_charmm36 -ff charmm36-jul2017-update 
+    python cg2at.py -c cg_input.pdb -a atomistic_input.pdb -w tip3p -fg martini_2-2_charmm36 -ff charmm36-jul2022
 </pre>
 
 <p align="center">
