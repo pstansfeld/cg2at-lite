@@ -25,7 +25,7 @@ CG2AT2 has been designed for ease of use, where for the majority of users need o
                                    <b>**INSTALL**</b>
 </p>
 
-CG2AT2 does not require compilation and can be downloaded, ready to run from either Github
+CG2AT2 does not require compilation and can be downloaded, ready to run straight from GitHub
 
 The addition of CG2AT to the system PATH is advisable for ease of use.
 
