@@ -8,11 +8,13 @@ from shutil import rmtree
 import time
 import gen, g_var, at_mod, read_in, at_mod_p
 
+terminal_PTMs = ['CYST', 'GLYM']
+
 
 #### collects input structures and creates initial folders
 def collect_input():
     if os.path.exists(g_var.args.c):
-        print('You have selected the following coarse grain input file: ', g_var.args.c)
+        print('You have selected the following coarse-grained input file: ', g_var.args.c)
     else:
         sys.exit('Cannot find CG input file: '+g_var.args.c)
     gen.mkdir_directory(g_var.working_dir)
@@ -42,7 +44,7 @@ def collect_input():
         gromacs([g_var.args.gmx+' -version', 'version.txt'])
     gromacs([g_var.args.gmx+' editconf -f '+gen.path_leaf(g_var.args.c)[1]+' -resnr 0 -c -o '+g_var.input_directory+'CG_INPUT.pdb', g_var.input_directory+'CG_INPUT.pdb'])
     if not os.path.exists(g_var.input_directory+'CG_INPUT.pdb'):
-        sys.exit('\nFailed to process coarsegrain input file')      
+        sys.exit('\nFailed to process coarse-grained input file')      
 
 #### gromacs parser
 def gromacs(gro):
@@ -117,7 +119,7 @@ def pdb2gmx_minimise(chain,pdb2gmx_selections,res_type, q):
         pdb2gmx_chain(chain, 'aligned_', res_type, pdb2gmx_selections[chain])
         at_mod.check_overlap_chain(chain, 'aligned_', res_type)
     minimise_protein_chain(chain, 'de_novo_', res_type)
-    if g_var.user_at_input and res_type == 'PROTEIN': 
+    if g_var.user_at_input and res_type == 'PROTEIN':
         minimise_protein_chain(chain, 'aligned_', res_type)
     q.put(chain)
     return chain
@@ -170,19 +172,22 @@ def ask_terminal(sys_info, residue_type):
         for ter_val,  ter_residue in enumerate(sys_info[chain]):
             if g_var.args.ter:
                 chain_ter.append(ask_ter_question(g_var.res_top[ter_residue]['RESIDUE'][0], g_var.termini_selections[ter_name[ter_val]][g_var.res_top[ter_residue]['RESIDUE'][0]], chain))
-            else:
-                chain_ter.append('')
+            elif ter_residue in terminal_PTMs and ter_val == 0:
+                # PTM with no modification
+                chain_ter.extend(['6', '0'])
+            elif len(chain_ter)!=2:
+                chain_ter.append('0')
         system_ter.append(chain_ter)
     return system_ter
 
-def run_parallel_pdb2gmx_min(res_type, sys_info):
+def run_parallel_pdb2gmx_min(res_type, sys_info):                        
     with mp.Pool(g_var.args.ncpus) as pool:
         m = mp.Manager()
         q = m.Queue()
         os.chdir(g_var.working_dir+res_type)
         make_min(res_type)
         gen.folder_copy_and_check(g_var.forcefield_location+g_var.forcefield, g_var.working_dir+res_type+'/'+g_var.forcefield+'/.')
-        gen.file_copy_and_check(g_var.forcefield_location+'/residuetypes.dat', g_var.working_dir+res_type+'/residuetypes.dat')
+        gen.file_copy_and_check(g_var.forcefield_location+g_var.forcefield+'/residuetypes.dat', g_var.working_dir+res_type+'/residuetypes.dat')
         pdb2gmx_selections=ask_terminal(sys_info, res_type)
         pool_process = pool.starmap_async(pdb2gmx_minimise, [(chain, pdb2gmx_selections,res_type, q) for chain in range(0, g_var.system[res_type])])
         while not pool_process.ready(): 
@@ -195,8 +200,8 @@ def run_parallel_pdb2gmx_min(res_type, sys_info):
     print('\npdb2gmx/minimisation completed on residue type: '+res_type+'\n')
 
 def pdb2gmx_chain(chain, input,res_type, pdb2gmx_selections):
-#### pdb2gmx on on protein chain, creates the topologies    
-    ter = ' -ter ' if g_var.args.ter else ''
+#### pdb2gmx on on protein chain, creates the topologies
+    ter = ' -ter '
     gromacs([g_var.args.gmx+' pdb2gmx -f '+res_type+'_'+input+str(chain)+'.pdb -o '+res_type+'_'+input+str(chain)+'_gmx.pdb -water none \
     -p '+res_type+'_'+input+str(chain)+'.top  -i '+res_type+'_'+str(chain)+'_posre.itp '+g_var.vs+ter+pdb2gmx_selections+'\nEOF', ''+res_type+'_'+input+str(chain)+'_gmx.pdb']) #### single chains
 #### converts the topology file and processes it into a itp file
@@ -260,6 +265,7 @@ def convert_topology(topol, protein_number, res_type):
         read=False
         mol_type=False
         if not os.path.exists(topol+str(protein_number)+'.itp'):
+            print('no topology', protein_number, res_type)
             with open(topol+str(protein_number)+'.itp', 'w') as itp_write:
 
                 for line in open(topol+str(protein_number)+'.top', 'r').readlines():
@@ -299,7 +305,7 @@ def write_topol(residue_type, residue_number, chain):
     found=False
     with open('topol_'+residue_type+chain+'.top', 'w') as topol_write:
     #### add standard headers may need to be changed dependant on forcefield
-        topol_write.write('; Include forcefield parameters\n#include \"../FINAL/'+g_var.forcefield+'/forcefield.itp\"\n')
+        topol_write.write('; Include force field parameters\n#include \"../FINAL/'+g_var.forcefield+'/forcefield.itp\"\n')
     #### add location of residue topology file absolute file locations
         if residue_type in g_var.sol_residues+g_var.ion_residues+g_var.np_residues:
             for directory in g_var.sol_directories+g_var.ion_directories+g_var.np_directories:
@@ -419,10 +425,10 @@ def write_merged_topol():
                             gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_'+str(unit)+posres_type, 'PROTEIN_'+str(unit)+posres_type)
                         gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_disres.itp', 'PROTEIN_disres.itp')  
         if os.path.exists('extra_atomtypes.itp'):
-            topol_write.write('; Include forcefield parameters\n#include \"../FINAL/'+g_var.forcefield+'/forcefield.itp\"\n')
+            topol_write.write('; Include force field parameters\n#include \"../FINAL/'+g_var.forcefield+'/forcefield.itp\"\n')
             topol_write.write('#include \"extra_atomtypes.itp\"\n')
         else:
-            topol_write.write('; Include forcefield parameters\n#include \"../FINAL/'+g_var.forcefield+'/forcefield.itp\"\n')
+            topol_write.write('; Include force field parameters\n#include \"../FINAL/'+g_var.forcefield+'/forcefield.itp\"\n')
         for line in topologies_to_include:
             topol_write.write(line)
 

@@ -36,18 +36,18 @@ def forcefield_selection(test=False):
                 folder_copy_and_check(g_var.args.ff, g_var.final_dir+g_var.forcefield)
                 g_var.opt['ff'] = g_var.forcefield
                 if not test:
-                    print('\nYou have chosen to use your own forcefield: '+g_var.forcefield+' in '+g_var.forcefield_location)
+                    print('\nYou have chosen to use your own force field: '+g_var.forcefield+' in '+g_var.forcefield_location)
             elif path_leaf(g_var.args.ff)[1]+'.ff' in g_var.forcefield_available:
                 forcefield_number = g_var.forcefield_available.index(path_leaf(g_var.args.ff)[1]+'.ff')
             elif path_leaf(g_var.args.ff)[1] in g_var.forcefield_available:
                 forcefield_number = g_var.forcefield_available.index(path_leaf(g_var.args.ff)[1])
             else:
-                print('Cannot find forcefield: '+g_var.args.ff+'  please select one from below\n')   
+                print('Cannot find force field: '+g_var.args.ff+'  please select one from below\n')   
         if 'forcefield_number' not in locals() and g_var.forcefield == '':
-            forcefield_number = database_selection(g_var.forcefield_available, 'forcefields', test)    
+            forcefield_number = database_selection(g_var.forcefield_available, 'force fields', test)    
         if g_var.forcefield == '':
             if not test:
-                print('\nYou have selected the forcefield: '+g_var.forcefield_available[forcefield_number].split('.')[0])
+                print('\nYou have selected the force field: '+g_var.forcefield_available[forcefield_number].split('.')[0])
             folder_copy_and_check(g_var.database_dir+'/forcefields/'+g_var.forcefield_available[forcefield_number], g_var.final_dir+g_var.forcefield_available[forcefield_number])
             g_var.forcefield_location, g_var.forcefield=g_var.database_dir+'forcefields/', g_var.forcefield_available[forcefield_number]
             g_var.opt['ff'] = g_var.forcefield_available[forcefield_number]
@@ -521,7 +521,7 @@ def fetch_atom_masses(forcefield_loc):
                     line_sep = line.split()       
                     at_mass[line_sep[0]]=line_sep[1] 
     else:
-        sys.exit('cannot find atomtypes.dat in the forcefield: '+forcefield_loc)
+        sys.exit('cannot find atomtypes.dat in the force field: '+forcefield_loc)
     return at_mass
 
 def fetch_atoms_water_ion(forcefield_loc, at_mass_p):
@@ -713,7 +713,7 @@ def ask_database(provided, selection_type, test=False):
                     return True
         #### if forcefield only accept one selection
             else:
-                number = int(input('\nplease select a forcefield: '))
+                number = int(input('\nplease select a force field: '))
                 if number < len(provided):
                     return number
                 elif test:
@@ -962,8 +962,8 @@ def print_script_timings():
         print('\nAll script timings have been saved in: \n'+g_var.final_dir+'script_timings.dat\n')
 
 def cg2at_header():
-    print('\n{0:^90}\n'.format('CG2AT2 is a fragment based conversion of coarsegrain to atomistic.'))
-    print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)))
+    print('\n{0:^90}\n'.format('CG2AT2 is a fragment based conversion of coarse-grained to atomistic.'))
+    print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)+' (CCD2MD)'))
     print('{0:^90}\n'.format('Last updated : '+str(g_var.script_update)))
     print('{0:^90}'.format('CG2AT2 is written by Owen Vickery'))
     print('{0:^90}'.format('Project leader Phillip Stansfeld'))
@@ -980,7 +980,7 @@ def cg2at_header():
 
 def database_information():
     
-    to_print = '\n{0:^90}\n{1:-<90}\n\n'.format('The available forcefields within your database are (flag -ff):', '')
+    to_print = '\n{0:^90}\n{1:-<90}\n\n'.format('The available force fields within your database are (flag -ff):', '')
     for forcefields in g_var.forcefield_available:
         to_print += '{0:^90}\n'.format(forcefields)
     to_print += '\n\n{0:^90}\n{1:-<90}\n\n'.format('The available fragment libraries within your database are (flag -fg):', '')
@@ -1037,7 +1037,7 @@ def print_sequnce_info(sys_type):
     to_print = ''
     for rep_val, rep in enumerate(sequence_info):
         if rep_val == 0 and len(rep) != 0:
-            to_print += 'Summary of coarsegrain '+sys_type+' chains\n'
+            to_print += 'Summary of coarse-grained '+sys_type+' chains\n'
         elif rep_val > 0 and len(rep) != 0:
             to_print += '\nSummary of atomistic '+sys_type+' chains\n'
         else:

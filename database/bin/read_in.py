@@ -53,7 +53,7 @@ def read_initial_cg_pdb(test=False):
 def filter_input(pdb_lines_raw, CG=True):
     pdb_lines_atoms = [gen.pdbatom(j) for j in pdb_lines_raw if j.startswith('ATOM ')] 
     if len(pdb_lines_atoms) == 0:
-        sys.exit('input coarsegrain structure seems to contain no beads')
+        sys.exit('input coarse-grained structure seems to contain no beads')
     if CG:
         box_vec =  [j for j in pdb_lines_raw if j.startswith('CRYST')]
         if len(box_vec) == 0:

@@ -1,0 +1,8 @@
+#include "~/Codes/Stansfeld_PDRA/CCD_conversion/charmm36-jul2022.ff/forcefield.itp"
+#include "RAMP.itp"
+
+[ system ]
+Test
+
+[ molecules ]
+RAMP 1
