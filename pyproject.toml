@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CG2AT-lite"
+dynamic = ["version"]
+authors = [{name="Owen N. Vickery"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
+maintainers = [{name="Katarina E. Blow",email="katarina.blow@warwick.ac.uk"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
+description = "A lite version of CG2AT for functionality with CCD2MD."
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = ["numpy >= 1.26.4","scipy"]
+classifiers = ["Programming Language :: Python :: 3"]
+license = "GPL-3.0"
+license-files = ["LICEN[CS]E*"]
+keywords = ["CG", "CCD2MD"]
+
+[project.scripts]
+cg2at = "cg2at-lite:cg2at.main"
+
+[project.urls]
+Homepage = "https://github.com/pstansfeld/cg2at-lite"
+CG2AT = "https://github.com/owenvickery/cg2at/"
