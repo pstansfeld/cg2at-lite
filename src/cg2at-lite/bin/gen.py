@@ -538,6 +538,7 @@ def fetch_atoms_water_ion(forcefield_loc, at_mass_p):
                         elif line.strip().startswith('['):
                             strip_atoms = False
                         elif strip_atoms:
+                            print(at_mass_p)
                             at_mass[line_sep[4]] = float(at_mass_p[line_sep[1]])
     return at_mass
 

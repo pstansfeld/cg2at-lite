@@ -693,6 +693,8 @@ HWSPCE      1.00800 ; Hydrogen for SPC/E water model
 OWT4EW     16.00000 ; Oxygen for TIP4P/Ew water model
 HWT4EW      1.00800 ; Hydrogen for TIP4P/Ew water model
 MWT4EW      0.00000 ; Virtual site of TIP4P/Ew water model
+    OW     16.00000 ; SPC Water for CG2AT
+    HW      1.00800 ; SPC WATER HYDROGEN
 
 ; Atom types for virtual sites  MNH3      0.00000 ; Vsite (Rigid tetrahedral NH3 group)
   MNH2      0.00000 ; Vsite (Rigid NH2 group)
