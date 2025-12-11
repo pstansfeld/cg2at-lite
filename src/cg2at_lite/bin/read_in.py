@@ -4,7 +4,7 @@ import sys, os
 import numpy as np
 import math
 import copy
-import gen, g_var
+from cg2at_lite.bin import gen, g_var
 
 
 

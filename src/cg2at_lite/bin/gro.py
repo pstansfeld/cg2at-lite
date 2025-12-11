@@ -6,7 +6,7 @@ import subprocess
 import multiprocessing as mp
 from shutil import rmtree
 import time
-import gen, g_var, at_mod, read_in, at_mod_p
+from cg2at_lite.bin import gen, g_var, at_mod, read_in, at_mod_p
 
 terminal_PTMs = ['CYST', 'GLYM']
 
