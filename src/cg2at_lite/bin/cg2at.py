@@ -4,16 +4,17 @@ import os, sys
 import numpy as np
 import time
 import multiprocessing as mp
+sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/database/bin')
 from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, read_in, g_var, check_library
 
 
-def main():
+if __name__ == '__main__':
     mp.freeze_support()
     ## hardcoded varibles used by the script
     ## I've tried to make them as comprehensive as possible but they may need updating occasionally
-    g_var.version = '0.2'
-    
-    g_var.script_update = '28-07-2025'
+    g_var.version = 1
+
+    g_var.script_update = '28-07-2024'
 
     g_var.other = {'DA':'A', 'DG':'G', 'DC':'C', 'DT':'T', 'DAX':'A', 'DGX':'G', 'DCX':'C', 'DTX':'T'}
 
@@ -192,5 +193,3 @@ def main():
 
 
 
-if __name__ == '__main__':
-    main()
