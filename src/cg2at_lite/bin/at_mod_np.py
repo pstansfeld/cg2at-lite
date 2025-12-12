@@ -3,7 +3,7 @@
 import os, sys
 import numpy as np
 import math
-import gen, g_var, at_mod
+from cg2at_lite.bin import gen, g_var, at_mod
 
 
 

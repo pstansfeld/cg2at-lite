@@ -5,7 +5,7 @@ import numpy as np
 import itertools
 import math
 from scipy.spatial import cKDTree
-import gen, g_var, at_mod_p, read_in, gro
+from cg2at_lite.bin import gen, g_var, at_mod_p, read_in, gro
 
 
 ### sanity checking

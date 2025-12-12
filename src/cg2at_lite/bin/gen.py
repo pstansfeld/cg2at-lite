@@ -11,7 +11,7 @@ import glob
 import re
 import copy
 import ntpath
-import g_var
+from cg2at_lite.bin import g_var
 
 
 def check_alternate_resname(resname):

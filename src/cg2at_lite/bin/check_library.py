@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import os, sys
-import gen, g_var
+from cg2at_lite.bin import gen, g_var
 
 
 def write_posre_file(residue, posres):

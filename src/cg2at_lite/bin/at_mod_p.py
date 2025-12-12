@@ -5,7 +5,7 @@ import numpy as np
 import difflib
 from scipy.spatial import cKDTree
 import copy
-import gen, g_var, at_mod, read_in
+from cg2at_lite.bin import gen, g_var, at_mod, read_in
 
 def build_multi_residue_atomistic_system(cg_residues, sys_type):   
 #### initisation of counters
