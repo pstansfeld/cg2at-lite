@@ -49619,8 +49619,8 @@
       C21   O21   C22   O22
       C31   O31   C32   O32
 
-[ SAPI24 ]
-; Phosphatidylinositol-(4,5)-bisphosphate (PIP2) with protonation on P4
+[ SA24 ]
+; Phosphatidylinositol-(4,5)-bisphosphate (PIP2) with protonation on P4 - was SAPI24
   [ atoms ]
       C12   CC3161  0.1400   1
        H2     HCA1  0.0900   1
@@ -49927,8 +49927,8 @@
       C21   O21   C22   O22
       C31   O31   C32   O32
 
-[ SAPI25 ]
-; Phosphatidylinositol-(4,5)-bisphosphate (PIP2) with protonation on P5
+[ SA25 ]
+; Phosphatidylinositol-(4,5)-bisphosphate (PIP2) with protonation on P5 - was SAPI25
   [ atoms ]
       C12   CC3161  0.1400   1
        H2     HCA1  0.0900   1
