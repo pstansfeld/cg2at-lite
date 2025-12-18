@@ -1,4 +1,4 @@
-; position restraints for POPI2_3-5
+; position restraints for POPI2_3-4
 [ position_restraints ]
 ;  i    funct       fcx        fcy        fcz
    1      1         50         50         50
