@@ -3,3 +3,5 @@ __pycache__/
 *.py[cod]
 *$py.class
 *~
+dist/
+src/CG2AT_lite.egg-info/
