@@ -963,7 +963,7 @@ def print_script_timings():
 
 def cg2at_header():
     print('\n{0:^90}\n'.format('CG2AT2 is a fragment based conversion of coarse-grained to atomistic.'))
-    print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)+' lite (for CCD2MD)'))
+    print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)+' (for CCD2MD)'))
     print('{0:^90}\n'.format('Last updated : '+str(g_var.script_update)))
     print('{0:^90}'.format('CG2AT2 is written by Owen Vickery'))
     print('{0:^90}'.format('Project leader Phillip Stansfeld'))

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "CG2AT-lite"
 #dynamic = ["version"]
-version = "0.2.5a0"
+version = "0.2.5a1"
 authors = [{name="Owen N. Vickery"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
 maintainers = [{name="Katarina E. Blow",email="katarina.blow@warwick.ac.uk"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
 description = "A lite version of CG2AT for functionality with CCD2MD."
@@ -18,7 +18,7 @@ license-files = ["LICEN[CS]E*"]
 keywords = ["CG", "CCD2MD"]
 
 [project.scripts]
-cg2at = "cg2at_lite.bin:cg2at.main"
+cg2at_lite = "cg2at_lite.bin:cg2at.main"
 
 [project.urls]
 Homepage = "https://github.com/pstansfeld/cg2at-lite"
