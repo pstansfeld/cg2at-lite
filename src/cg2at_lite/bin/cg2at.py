@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.realpath(__file__))+'/database/bin')
 from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, read_in, g_var, check_library
 
 
-if __name__ == '__main__':
+def main():
     mp.freeze_support()
     ## hardcoded varibles used by the script
     ## I've tried to make them as comprehensive as possible but they may need updating occasionally
@@ -193,3 +193,5 @@ if __name__ == '__main__':
 
 
 
+if __name__=="__main__":
+    main()
