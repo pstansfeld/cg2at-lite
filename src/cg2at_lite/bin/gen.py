@@ -13,7 +13,6 @@ import copy
 import ntpath
 from cg2at_lite.bin import g_var
 
-
 def check_alternate_resname(resname):
     if resname in g_var.alt_res_name:
         return  g_var.alt_res_name[resname]

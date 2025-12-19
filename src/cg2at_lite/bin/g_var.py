@@ -5,7 +5,7 @@ from time import gmtime, strftime
 import argparse
 from pathlib import Path
 
-if __name__ == "g_var" and 'start_dir' not in locals():
+if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
     parser = argparse.ArgumentParser(description='Converts CG representation into an atomistic representation', prog='CG2AT2', epilog='Enjoy the program and best of luck!\n')
     parser.add_argument('-info', help=' provides version, available force fields and fragments', action='store_true')
     parser.add_argument('-version', action='version', version='%(prog)s 0.2.5.lite')
