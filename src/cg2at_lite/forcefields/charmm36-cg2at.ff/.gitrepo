@@ -6,7 +6,7 @@
 [subrepo]
 	remote = https://github.com/keb721/forcefield_files
 	branch = CHARMM
-	commit = cdc4ce2f2aa1acf359151cb706c71068b659687d
-	parent = 4d3e8cc2569916db4247ad04b1a165a0e134748e
+	commit = a27e8af86b6bfd72cdc3622b1a515954c40cfede
+	parent = 2a234408b8ee0f280de03b9a18ba52644bd8d31c
 	method = merge
 	cmdver = 0.4.9
