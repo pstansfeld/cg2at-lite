@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "CG2AT-lite"
 #dynamic = ["version"]
-version = "0.2.7a3"
+version = "0.2.6b0"
 authors = [{name="Owen N. Vickery"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
 maintainers = [{name="Katarina E. Blow",email="katarina.blow@warwick.ac.uk"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
 description = "A lite version of CG2AT for functionality with CCD2MD."

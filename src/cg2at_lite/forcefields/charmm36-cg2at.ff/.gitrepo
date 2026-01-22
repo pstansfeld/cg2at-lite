@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/keb721/forcefield_files
+	branch = CHARMM
+	commit = a27e8af86b6bfd72cdc3622b1a515954c40cfede
+	parent = 2a234408b8ee0f280de03b9a18ba52644bd8d31c
+	method = merge
+	cmdver = 0.4.9
