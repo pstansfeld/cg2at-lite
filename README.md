@@ -114,7 +114,7 @@ OPTIONAL
 
 
 <p align="center">
-  <img width="500" src="src/cg2at-lite/database/bin/images/Fragment.png">
+  <img width="500" src="src/cg2at-lite/bin/images/Fragment.png">
 </p>
 
 This workflow allows each fragment to be treated individually, with no knowledge of what any other bead contains.
