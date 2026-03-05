@@ -114,7 +114,7 @@ OPTIONAL
 
 
 <p align="center">
-  <img width="500" src="database/bin/images/Fragment.png">
+  <img width="500" src="src/cg2at-lite/database/bin/images/Fragment.png">
 </p>
 
 This workflow allows each fragment to be treated individually, with no knowledge of what any other bead contains.
@@ -131,7 +131,7 @@ CG2AT2 roughly follows the following workflow.
 
 
 <p align="center">
-  <img width="500" src="src/database/bin/images/workflow_short.jpg">
+  <img width="500" src="src/cg2at-lite/database/bin/images/workflow_short.jpg">
 </p>
 
 <p align="center">
@@ -141,7 +141,7 @@ CG2AT2 roughly follows the following workflow.
 To correct for accidental threading of lipids tails through aromatic residues, CG2AT2 analyses the length of all bonds within the minimised system. If any bonds are greater than 0.2 nm the lipid is considered threaded. The atoms closest to the aromatic residue are then corrected and the system is minimised again.
 
 <p align="center">
-  <img width="500" src="database/bin/images/threaded.png">
+  <img width="500" src="src/cg2at-lite/database/bin/images/threaded.png">
 </p>
 
 
