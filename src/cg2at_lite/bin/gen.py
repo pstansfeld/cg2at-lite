@@ -3,21 +3,27 @@
 import os, sys
 import numpy as np
 import math
-from distutils.dir_util import copy_tree
 import multiprocessing as mp
-import distutils.spawn
-from shutil import copyfile
+import shutil
+from shutil import copyfile, copytree
 import glob
 import re
 import copy
 import ntpath
+from typing import Optional
 from cg2at_lite.bin import g_var
+from cg2at_lite.bin.exceptions import (
+    CG2ATError, InputError, FragmentNotFoundError,
+    TopologyError, GromacsError,
+)
 
-def check_alternate_resname(resname):
+def check_alternate_resname(resname: str) -> str:
     if resname in g_var.alt_res_name:
-        return  g_var.alt_res_name[resname]
+        return g_var.alt_res_name[resname]
     elif resname not in g_var.res_top:
-        sys.exit('The residue '+resname+' cannot be found in the topology or alternate resnames')
+        raise TopologyError(
+            f'The residue {resname} cannot be found in the topology or alternate resnames'
+        )
     else:
         return resname
 
@@ -157,10 +163,10 @@ def correct_number_cpus():
             g_var.args.ncpus = mp.cpu_count()
     g_var.opt['ncpus'] = g_var.args.ncpus
 
-def check_input_flag():
+def check_input_flag() -> None:
     if g_var.get_forcefield and g_var.args.c is None:
         g_var.parser.print_help(sys.stderr)
-        sys.exit('\nError: the following arguments are required: -c\n')
+        raise InputError('\nError: the following arguments are required: -c\n')
 
 def path_leaf(path):
     head, tail = ntpath.split(path)
@@ -170,24 +176,22 @@ def path_leaf(path):
         return path.replace(tail, ''), tail
 
 ### finds gromacs installation
-def find_gromacs():
-    if g_var.args.gmx != None:
-        g_var.args.gmx=distutils.spawn.find_executable(g_var.args.gmx)
-    else:
-        g_var.args.gmx=distutils.spawn.find_executable('gmx')
-    if g_var.args.gmx is None or type(g_var.args.gmx) != str:
-        if os.environ.get("GMXBIN") != None:
-            for root, dirs, files in os.walk(os.environ.get("GMXBIN")):
+def find_gromacs() -> None:
+    gmx_name = g_var.args.gmx if g_var.args.gmx is not None else 'gmx'
+    g_var.args.gmx = shutil.which(gmx_name)
+    if g_var.args.gmx is None:
+        gmxbin = os.environ.get("GMXBIN")
+        if gmxbin is not None:
+            for _root, _dirs, files in os.walk(gmxbin):
                 for file_name in files:
                     if file_name.startswith('gmx') and file_name.islower() and '.' not in file_name:
-                        g_var.args.gmx=distutils.spawn.find_executable(file_name)
-                        if type(g_var.args.gmx) == str and g_var.args.gmx != None :
+                        found = shutil.which(file_name)
+                        if isinstance(found, str):
+                            g_var.args.gmx = found
                             break
-                        else:
-                            g_var.args.gmx=None
                 break
         if g_var.args.gmx is None:
-            sys.exit('Cannot find gromacs installation')
+            raise GromacsError('Cannot find gromacs installation')
     g_var.opt['gmx'] = g_var.args.gmx
 
 def trunc_coord(xyz):
@@ -203,16 +207,36 @@ def trunc_coord(xyz):
             xyz_new.append(coord)
     return xyz_new[0],xyz_new[1],xyz_new[2]
 
-def calculate_distance(p1, p2):
+def calculate_distance(p1, p2) -> float:
     return np.sqrt(((p1[0]-p2[0])**2)+((p1[1]-p2[1])**2)+((p1[2]-p2[2])**2))
 
-def file_copy_and_check(file_in,file_out):
+def file_copy_and_check(file_in: str, file_out: str) -> None:
     if not os.path.exists(file_out) and os.path.exists(file_in):
         copyfile(file_in, file_out)
 
-def folder_copy_and_check(folder_in,folder_out):
+
+def print_progress(label: str, current: int, total: int, width: int = 40) -> None:
+    """Print an inline progress bar that overwrites itself each call.
+
+    Example output:
+        pdb2gmx/minimisation  [=========>          ]  12/25  48%
+    """
+    if total == 0:
+        return
+    filled = int(width * current / total)
+    bar = '=' * filled + '>' + ' ' * (width - filled - 1) if filled < width else '=' * width
+    pct = int(100 * current / total)
+    print(f'\r{label}  [{bar}]  {current}/{total}  {pct}%', end='', flush=True)
+
+
+def finish_progress(label: str, total: int, width: int = 40) -> None:
+    """Print the completed state of a progress bar and move to a new line."""
+    bar = '=' * width
+    print(f'\r{label}  [{bar}]  {total}/{total}  100%')
+
+def folder_copy_and_check(folder_in: str, folder_out: str) -> None:
     if not os.path.exists(folder_out):
-        copy_tree(folder_in, folder_out)
+        copytree(folder_in, folder_out)
 
 def flags_used():
     print('\nAll variables supplied have been saved in : \n'+g_var.input_directory+'script_inputs.dat')
@@ -223,7 +247,7 @@ def flags_used():
             if var != 'input':
                 scr_input.write('{0:9}{1:15}\n'.format(var,str(g_var.opt[var])))
 
-def is_hydrogen(atom):
+def is_hydrogen(atom: str) -> bool:
     if str.isdigit(atom[0]) and atom[1] != 'H':
         return False
     elif not str.isdigit(atom[0]) and not atom.startswith('H'):
@@ -323,10 +347,10 @@ def new_box_vec(box_vec, box):
     box_vec = g_var.box_line%(float(box_vec_values[0]), float(box_vec_values[1]), float(box_vec_values[2]), float(box_vec_split[3]), float(box_vec_split[4]),float(box_vec_split[5]))
     return box_vec, np.array(box_shift)
 
-def strip_header(line):
+def strip_header(line: str) -> str:
     line_new = line.replace('[','').split(']', 1)[0]
     if len(line_new.split())>1 or len(line_new.split())==0:
-        sys.exit('There is a issue in one of the fragment headers: \n'+line)
+        raise TopologyError('There is a issue in one of the fragment headers: \n'+line)
     return line_new.strip()
 
 def topology_header(line, topology, location):
@@ -665,7 +689,7 @@ def fragment_location(residue):
         for directory in range(len(res_type)):
             if os.path.exists(res_type[directory][0]+residue+'/'+swap_to_solvent(residue)+'.pdb'):
                 return res_type[directory][0]+residue+'/'+swap_to_solvent(residue)+'.pdb'            
-    sys.exit('Cannot find fragment: '+residue+'/'+swap_to_solvent(residue)+'.pdb')
+    raise FragmentNotFoundError('Cannot find fragment: '+residue+'/'+swap_to_solvent(residue)+'.pdb')
 
 
 def read_database_directories():
@@ -677,8 +701,7 @@ def read_database_directories():
                 available_provided = [x for x in sorted(dirs) if not x.startswith('_')]
                 break
         else:
-            sys.exit('no '+directory_type+' found')
-            available_provided=[]
+            raise CG2ATError('no '+directory_type+' found')
         available_provided_database.append(available_provided)
     g_var.forcefield_available, g_var.fragments_available = available_provided_database[0], available_provided_database[1]
 
@@ -962,7 +985,7 @@ def print_script_timings():
 
 def cg2at_header():
     print('\n{0:^90}\n'.format('CG2AT2 is a fragment based conversion of coarse-grained to atomistic.'))
-    print('{0:^90}\n'.format('CG2AT2 version: '+str(g_var.version)+' (for CCD2MD)'))
+    print('{0:^90}\n'.format('CG2AT2 version: ' + g_var.VERSION + ' (for CCD2MD)'))
     print('{0:^90}\n'.format('Last updated : '+str(g_var.script_update)))
     print('{0:^90}'.format('CG2AT2 is written by Owen Vickery'))
     print('{0:^90}'.format('Project leader Phillip Stansfeld'))
@@ -1031,7 +1054,7 @@ def write_system_components():
         to_write += '{0:^10}{1:^25}\n'.format(section, g_var.system[section])
     return to_write
 
-def print_sequnce_info(sys_type):
+def print_sequence_info(sys_type: str) -> str:
     sequence_info = [g_var.seq_cg[sys_type], g_var.seq_at[sys_type]] if g_var.user_at_input and sys_type == 'PROTEIN' else [g_var.seq_cg[sys_type]]
     to_print = ''
     for rep_val, rep in enumerate(sequence_info):
@@ -1075,6 +1098,7 @@ def print_to_100_char(list_to_print, to_print):
     return to_print
 
 def print_sequnce_info_header(rep_val, rep, to_print, counter, index):
+    # NOTE: renamed to print_sequence_info_header below; alias retained for compatibility
     if rep_val == 0:
         to_print += '\nCG chain: '+str(index)+'\n'
     else:
@@ -1092,3 +1116,9 @@ def print_sequnce_info_header(rep_val, rep, to_print, counter, index):
                 rep[index] = ['-']*int(seq_range[0])+rep[index]
             counter = 0
     return rep, to_print, counter
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatibility aliases for renamed functions (fix typos in names)
+# ---------------------------------------------------------------------------
+print_sequnce_info = print_sequence_info  # original name had a typo

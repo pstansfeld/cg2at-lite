@@ -354,7 +354,7 @@ def BB_connectivity(at_connections,cg_connections, cg_residues, at_residues, res
 
 ################################################################### Merged system
 
-def merge_indivdual_chain_pdbs(file, end, res_type):
+def merge_individual_chain_pdbs(file: str, end: str, res_type: str) -> None:
 #### reads in each chain into merge list
     merge, merged_coords = [],[]
     count = 0
@@ -671,3 +671,9 @@ def fix_threaded_lipids(lipid_atoms, merge, merge_coords):
     if not os.path.exists(g_var.merged_directory+'MIN/merged_cg2at_threaded_minimised.pdb'):
         gro.minimise_merged_pdbs('_threaded')
     gen.file_copy_and_check(g_var.merged_directory+'MIN/merged_cg2at_threaded_minimised.pdb', g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb')
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatibility alias (Fix 11: typo in original function name)
+# ---------------------------------------------------------------------------
+merge_indivdual_chain_pdbs = merge_individual_chain_pdbs

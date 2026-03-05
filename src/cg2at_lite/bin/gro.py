@@ -108,7 +108,7 @@ def make_min(residue):#, fragments):
         with open('em_'+residue+'.mdp','w') as em:
             em.write('define = \n integrator = steep\nnsteps = 20000\nemtol = 750\nemstep = 0.001\ncutoff-scheme = Verlet\n')
 
-def pdb2gmx_minimise(chain,pdb2gmx_selections,res_type, q):
+def pdb2gmx_minimise(chain, pdb2gmx_selections, res_type, q=None):
     os.chdir(g_var.working_dir+'/'+res_type)
     if not os.path.exists(res_type+'_de_novo_'+str(chain)+'_gmx.pdb'):
         pdb2gmx_chain(chain, 'de_novo_', res_type, ' << EOF \n1\n'+str(pdb2gmx_selections[chain][0])+'\n'+str(pdb2gmx_selections[chain][1]))
@@ -121,7 +121,8 @@ def pdb2gmx_minimise(chain,pdb2gmx_selections,res_type, q):
     minimise_protein_chain(chain, 'de_novo_', res_type)
     if g_var.user_at_input and res_type == 'PROTEIN':
         minimise_protein_chain(chain, 'aligned_', res_type)
-    q.put(chain)
+    if q is not None:
+        q.put(chain)
     return chain
 
 
@@ -180,24 +181,43 @@ def ask_terminal(sys_info, residue_type):
         system_ter.append(chain_ter)
     return system_ter
 
-def run_parallel_pdb2gmx_min(res_type, sys_info):                        
-    with mp.Pool(g_var.args.ncpus) as pool:
-        m = mp.Manager()
-        q = m.Queue()
-        os.chdir(g_var.working_dir+res_type)
-        make_min(res_type)
-        gen.folder_copy_and_check(g_var.forcefield_location+g_var.forcefield, g_var.working_dir+res_type+'/'+g_var.forcefield+'/.')
-        gen.file_copy_and_check(g_var.forcefield_location+g_var.forcefield+'/residuetypes.dat', g_var.working_dir+res_type+'/residuetypes.dat')
-        pdb2gmx_selections=ask_terminal(sys_info, res_type)
-        pool_process = pool.starmap_async(pdb2gmx_minimise, [(chain, pdb2gmx_selections,res_type, q) for chain in range(0, g_var.system[res_type])])
-        while not pool_process.ready(): 
-            report_complete('pdb2gmx/minimisation', q.qsize(), g_var.system[res_type])
-    for chain in range(0, g_var.system[res_type]):
-        if not os.path.exists(res_type+'_de_novo_'+str(chain)+'_gmx.pdb') or not os.path.exists(g_var.working_dir+res_type+'/MIN/'+res_type+'_de_novo_'+str(chain)+'.pdb'):
-            print('For some reason parallisation of pdb2gmx failed on chain '+str(chain)+', now rerunning in serial.')
-            pdb2gmx_minimise(chain, pdb2gmx_selections,res_type, q)
-    print('{:<130}'.format(''), end='\r')
-    print('\npdb2gmx/minimisation completed on residue type: '+res_type+'\n')
+def run_parallel_pdb2gmx_min(res_type: str, sys_info: dict) -> None:
+    """Run pdb2gmx and minimisation for every chain of res_type sequentially.
+
+    Previously this used mp.Pool to run chains in parallel.  That approach had
+    three interlocking failure modes:
+
+    1. **Shared log file race condition** — every worker appended to the same
+       ``gromacs_outputs`` file simultaneously with no locking, causing
+       corruption and missed error detection.
+    2. **CPU oversubscription** — GROMACS already uses internal threading
+       (-ntmpi / -ntomp).  Launching N pool workers each running a
+       multi-threaded GROMACS process floods the CPU, which is why failures
+       appeared on later chains (e.g. chain 14) in larger systems.
+    3. **os.chdir() in workers** — fragile when subprocesses inherit the
+       working directory in unexpected states.
+
+    Serial execution is reliable, and pdb2gmx+minimisation per chain is fast
+    enough that the wall-time difference is negligible for typical systems.
+    The -ncpus flag is already marked DEPRECATED in the argument parser.
+    """
+    os.chdir(g_var.working_dir + res_type)
+    make_min(res_type)
+    gen.folder_copy_and_check(
+        g_var.forcefield_location + g_var.forcefield,
+        g_var.working_dir + res_type + '/' + g_var.forcefield + '/.',
+    )
+    gen.file_copy_and_check(
+        g_var.forcefield_location + g_var.forcefield + '/residuetypes.dat',
+        g_var.working_dir + res_type + '/residuetypes.dat',
+    )
+    pdb2gmx_selections = ask_terminal(sys_info, res_type)
+    total = g_var.system[res_type]
+    for chain in range(total):
+        gen.print_progress(f'pdb2gmx/minimisation ({res_type})', chain + 1, total)
+        pdb2gmx_minimise(chain, pdb2gmx_selections, res_type, None)
+    gen.finish_progress(f'pdb2gmx/minimisation ({res_type})', total)
+    print('pdb2gmx/minimisation completed on residue type: ' + res_type + '\n')
 
 def pdb2gmx_chain(chain, input,res_type, pdb2gmx_selections):
 #### pdb2gmx on on protein chain, creates the topologies
@@ -265,7 +285,8 @@ def convert_topology(topol, protein_number, res_type):
         read=False
         mol_type=False
         if not os.path.exists(topol+str(protein_number)+'.itp'):
-            print('no topology', protein_number, res_type)
+            if g_var.args.v >= 1:
+                print(f'Generating {res_type} chain {protein_number} itp from topology')
             with open(topol+str(protein_number)+'.itp', 'w') as itp_write:
 
                 for line in open(topol+str(protein_number)+'.top', 'r').readlines():

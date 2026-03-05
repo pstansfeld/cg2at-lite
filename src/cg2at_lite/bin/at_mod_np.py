@@ -3,11 +3,13 @@
 import os, sys
 import numpy as np
 import math
+from typing import Any
 from cg2at_lite.bin import gen, g_var, at_mod
+from cg2at_lite.bin.exceptions import CG2ATError
 
 
 
-def build_atomistic_system(residue_type):
+def build_atomistic_system(residue_type: str) -> dict[str, int]:
     system={}
 #### for each residue type covert to atomistic except protein
     print('Converting residue type: ' +residue_type)
@@ -30,22 +32,30 @@ def write_solvent(atomistic_fragments, residue_type):
     coord, index_conversion = at_mod.index_conversion_generate(atomistic_fragments, merge_coord)
     at_mod.write_pdb(atomistic_fragments, coord, index_conversion, g_var.working_dir+residue_type+'/'+residue_type+'_all.pdb')
 
-def read_solvent_conversion(cg_residue_type,cg_residues):
-    residue_type={}
-    residue_type_mass={}
-    for cg_resid, cg_residue in enumerate(cg_residues):
-        frag_location=gen.fragment_location(cg_residue_type) ### get fragment location from database
-        residue_type[cg_residue_type], residue_type_mass[cg_residue_type] = at_mod.get_atomistic(frag_location, cg_residue_type)
+def read_solvent_conversion(cg_residue_type: str, cg_residues: dict) -> tuple:
+    """Return (atoms_per_molecule, total_atoms) for a solvent residue type.
 
+    The inner loops previously contained an early ``return`` that exited on
+    the very first group of the first residue, meaning the rest of the
+    residues were never inspected.  The return is now correctly placed after
+    all groups have been examined.
+    """
+    residue_type: dict = {}
+    residue_type_mass: dict = {}
+    sol_p_bead = 0
+    for cg_resid, cg_residue in enumerate(cg_residues):
+        frag_location = gen.fragment_location(cg_residue_type)
+        residue_type[cg_residue_type], residue_type_mass[cg_residue_type] = (
+            at_mod.get_atomistic(frag_location, cg_residue_type)
+        )
         for group in residue_type[cg_residue_type]:
-            sol_p_bead = 0
             for frag in residue_type[cg_residue_type][group].values():
                 for atom in frag.values():
                     if int(atom['resid_ori']) > sol_p_bead:
                         sol_p_bead = int(atom['resid_ori'])
-            return sol_p_bead, sol_p_bead*len(cg_residues)
-    
-    sys.exit('There is an issue with the solvent recalculation')
+    if sol_p_bead == 0:
+        raise CG2ATError('There is an issue with the solvent recalculation')
+    return sol_p_bead, sol_p_bead * len(cg_residues)
 
 def at_np_solvent(cg_residue_type,cg_residues):   
     atomistic_fragments={}  #### residue dictionary
