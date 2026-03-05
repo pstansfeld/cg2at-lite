@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import os, sys
+import copy
 import numpy as np
 import itertools
 import math
+from functools import lru_cache
 from scipy.spatial import cKDTree
 from cg2at_lite.bin import gen, g_var, at_mod_p, read_in, gro
 
@@ -220,21 +222,29 @@ def overlapping_atoms(tree):
     return overlapped
 
 def check_atom_overlap(coordinates):
-#### creates tree of atom coordinates
+    """Jitter any overlapping atoms until all pairwise distances exceed g_var.args.ov.
+
+    The cKDTree is rebuilt once per pass over all overlaps rather than once
+    per atom move, which gives a significant speedup for large systems.
+    """
     tree = cKDTree(coordinates)
     overlapped = overlapping_atoms(tree)
-#### runs through overlapping atoms and moves atom in a random diection until it is no longer overlapping
     while len(overlapped) > 0:
-        for ndx_val, ndx in enumerate(overlapped):
-            if np.round((ndx_val/len(overlapped))*100,2).is_integer() and len(overlapped) > 30:
-                print('fixing '+str(len(overlapped))+' overlapped atoms: '+str(np.round((ndx_val/len(overlapped))*100,2))+' %', end='\r')
-            xyz_check = np.array([coordinates[ndx[0]][0]+np.random.uniform(-0.2, 0.2), coordinates[ndx[0]][1]+np.random.uniform(-0.2, 0.2),coordinates[ndx[0]][2]+np.random.uniform(-0.2, 0.2)])
-            while len(tree.query_ball_point(xyz_check, r=g_var.args.ov)) > 1:
-                xyz_check = np.array([coordinates[ndx[0]][0]+np.random.uniform(-0.2, 0.2), coordinates[ndx[0]][1]+np.random.uniform(-0.2, 0.2),coordinates[ndx[0]][2]+np.random.uniform(-0.2, 0.2)])
-            coordinates[ndx[0]]=xyz_check
-            tree = cKDTree(coordinates)
         if len(overlapped) > 30:
-            print('{:<100}'.format(''), end='\r')
+            gen.print_progress('Fixing atom overlaps', 0, len(overlapped))
+        for ndx_val, ndx in enumerate(overlapped):
+            if len(overlapped) > 30:
+                gen.print_progress('Fixing atom overlaps', ndx_val + 1, len(overlapped))
+            # Jitter the atom using the current tree for the inner acceptance check.
+            # The tree is intentionally not rebuilt here; we rebuild once per pass below.
+            xyz_check = coordinates[ndx[0]] + np.random.uniform(-0.2, 0.2, 3)
+            while len(tree.query_ball_point(xyz_check, r=g_var.args.ov)) > 1:
+                xyz_check = coordinates[ndx[0]] + np.random.uniform(-0.2, 0.2, 3)
+            coordinates[ndx[0]] = xyz_check
+        # Rebuild tree once per pass now that all atoms in this batch have moved.
+        tree = cKDTree(coordinates)
+        if len(overlapped) > 30:
+            gen.finish_progress('Fixing atom overlaps', len(overlapped))
         overlapped = overlapping_atoms(tree)
     return coordinates
 
@@ -250,30 +260,56 @@ def split_fragment_names(line, residue, resname):
         residue[group][bead]={} 
     return residue, group, bead   
 
-def get_atomistic(frag_location, resname=False):
-    if not resname:
-        resname = frag_location.split('/')[-1][:-4]
-#### read in atomistic fragments into dictionary    
-    residue = {} ## a dictionary of bead in each residue eg residue[group][bead][atom number(1)][residue_name(ASP)/coordinates(coord)/atom name(C)/connectivity(2)/atom_mass(12)]
+@lru_cache(maxsize=None)
+def _get_atomistic_cached(frag_location: str, resname: str):
+    """Parse a fragment PDB once and cache the result.
+
+    Keyed on (frag_location, resname) so each unique residue type is read from
+    disk exactly once, regardless of how many copies exist in the system.
+    """
+    residue = {}
     fragment_mass = {}
     with open(frag_location, 'r') as pdb_input:
-        for line_nr, line in enumerate(pdb_input.readlines()):
+        for line in pdb_input.readlines():
             if line.startswith('['):
                 residue, group, bead = split_fragment_names(line, residue, resname)
-                fragment_mass[bead]=[]
+                fragment_mass[bead] = []
             if line.startswith('ATOM'):
-                line_sep = gen.pdbatom(line) ## splits up pdb line
-                residue[group][bead][line_sep['atom_number']]={'coord':np.array([line_sep['x']*g_var.sf,line_sep['y']*g_var.sf,line_sep['z']*g_var.sf]),
-                                                                'atom':line_sep['atom_name'],'resid':1, 'resid_ori':line_sep['residue_id'],'res_type':line_sep['residue_name'],
-                                                                'frag_mass':1}    
-#### updates fragment mass   
+                line_sep = gen.pdbatom(line)
+                residue[group][bead][line_sep['atom_number']] = {
+                    'coord': np.array([line_sep['x'] * g_var.sf,
+                                       line_sep['y'] * g_var.sf,
+                                       line_sep['z'] * g_var.sf]),
+                    'atom': line_sep['atom_name'], 'resid': 1,
+                    'resid_ori': line_sep['residue_id'],
+                    'res_type': line_sep['residue_name'],
+                    'frag_mass': 1,
+                }
                 if not gen.is_hydrogen(line_sep['atom_name']):
                     if line_sep['atom_name'] in g_var.res_top[resname]['atom_masses']:
-                        residue[group][bead][line_sep['atom_number']]['frag_mass']=g_var.res_top[resname]['atom_masses'][line_sep['atom_name']]  ### updates atom masses with crude approximations
-                        fragment_mass[bead].append([line_sep['x']*g_var.sf,line_sep['y']*g_var.sf,line_sep['z']*g_var.sf,g_var.res_top[resname]['atom_masses'][line_sep['atom_name']]])               
+                        mass = g_var.res_top[resname]['atom_masses'][line_sep['atom_name']]
+                        residue[group][bead][line_sep['atom_number']]['frag_mass'] = mass
+                        fragment_mass[bead].append([line_sep['x'] * g_var.sf,
+                                                    line_sep['y'] * g_var.sf,
+                                                    line_sep['z'] * g_var.sf, mass])
                 else:
-                    fragment_mass[bead].append([line_sep['x']*g_var.sf,line_sep['y']*g_var.sf,line_sep['z']*g_var.sf,1])
+                    fragment_mass[bead].append([line_sep['x'] * g_var.sf,
+                                                line_sep['y'] * g_var.sf,
+                                                line_sep['z'] * g_var.sf, 1])
     return residue, fragment_mass
+
+
+def get_atomistic(frag_location: str, resname: str = False):
+    """Return a per-call deep copy of the cached fragment data.
+
+    Callers mutate the returned dicts (e.g. deleting unused beads in
+    at_mod_p.py), so each call gets its own independent copy while the
+    underlying parse result is only computed once per residue type.
+    """
+    if not resname:
+        resname = frag_location.split('/')[-1][:-4]
+    residue, fragment_mass = _get_atomistic_cached(frag_location, resname)
+    return copy.deepcopy(residue), copy.deepcopy(fragment_mass)
 
 def connectivity(cg, at_frag_centers, cg_frag_centers, group, group_number):
 #### returns the connections between the atomistic and coarse grain beads
@@ -354,7 +390,7 @@ def BB_connectivity(at_connections,cg_connections, cg_residues, at_residues, res
 
 ################################################################### Merged system
 
-def merge_individual_chain_pdbs(file: str, end: str, res_type: str) -> None:
+def merge_indivdual_chain_pdbs(file, end, res_type):
 #### reads in each chain into merge list
     merge, merged_coords = [],[]
     count = 0
@@ -671,9 +707,3 @@ def fix_threaded_lipids(lipid_atoms, merge, merge_coords):
     if not os.path.exists(g_var.merged_directory+'MIN/merged_cg2at_threaded_minimised.pdb'):
         gro.minimise_merged_pdbs('_threaded')
     gen.file_copy_and_check(g_var.merged_directory+'MIN/merged_cg2at_threaded_minimised.pdb', g_var.merged_directory+'checked_ringed_lipid_de_novo.pdb')
-
-
-# ---------------------------------------------------------------------------
-# Backward-compatibility alias (Fix 11: typo in original function name)
-# ---------------------------------------------------------------------------
-merge_indivdual_chain_pdbs = merge_individual_chain_pdbs

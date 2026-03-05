@@ -20,8 +20,7 @@ def build_multi_residue_atomistic_system(cg_residues, sys_type):
     new_chain = True
     for cg_residue_id, residue_number in enumerate(cg_residues[sys_type]):
 
-        if np.round((cg_residue_id/len(cg_residues[sys_type]))*100,2).is_integer():
-            print('Converting de_novo '+sys_type+': ',np.round((cg_residue_id/len(cg_residues[sys_type]))*100,2),'%', end='\r')
+        gen.print_progress('Converting ' + sys_type, cg_residue_id + 1, len(cg_residues[sys_type]))
         resname = cg_residues[sys_type][residue_number][next(iter(cg_residues[sys_type][residue_number]))]['residue_name']
         if new_chain: 
             if chain_count not in coord_atomistic:
