@@ -131,7 +131,7 @@ CG2AT2 roughly follows the following workflow.
 
 
 <p align="center">
-  <img width="500" src="database/bin/images/workflow_short.jpg">
+  <img width="500" src="src/database/bin/images/workflow_short.jpg">
 </p>
 
 <p align="center">
