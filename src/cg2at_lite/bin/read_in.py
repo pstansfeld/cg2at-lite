@@ -12,7 +12,7 @@ from cg2at_lite.bin.exceptions import CG2ATError, InputError, FragmentNotFoundEr
 
 def read_initial_cg_pdb(test: bool = False) -> str:
     if not test:
-        print('\nThis script is now hopefully doing the following (Good luck):\n')
+        print('\nReading coarse-grained input:\n')
     residue_list: dict = {}
     count = 0
     # Fix: use explicit sentinel instead of 'residue_prev' not in locals()

@@ -153,7 +153,7 @@ def _run() -> None:
             number = at_mod_np.build_atomistic_system(residue_type)
             g_var.system.update(number)
 
-        print('\nThis may take some time....(probably time for a coffee)\n')
+        print('\nThis may take some time...\n')
         for residue_type in non_protein_types:
             if not os.path.exists(
                     g_var.working_dir + residue_type + '/' + residue_type + '_merged.pdb'):
@@ -168,7 +168,7 @@ def _run() -> None:
 
     # --- Merge system ---
     g_var.tc['n_p_t'] = time.time()
-    print('Merging all residue types to single file. (Or possibly tea)\n')
+    print('Merging all residue types into single file.\n')
     gro.write_merged_topol()
 
     for file_name in os.listdir(g_var.merged_directory):
