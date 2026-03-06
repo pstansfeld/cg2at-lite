@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import os, sys
+import os
 import copy
 import numpy as np
-import math
 from cg2at_lite.bin import gen, g_var, at_mod
+from cg2at_lite.bin.exceptions import CG2ATError
 
 
 
@@ -46,7 +46,7 @@ def read_solvent_conversion(cg_residue_type,cg_residues):
                         sol_p_bead = int(atom['resid_ori'])
             return sol_p_bead, sol_p_bead*len(cg_residues)
     
-    sys.exit('There is an issue with the solvent recalculation')
+    raise CG2ATError('There is an issue with the solvent recalculation')
 
 def at_np_solvent(cg_residue_type,cg_residues):   
     atomistic_fragments={}  #### residue dictionary
@@ -59,7 +59,9 @@ def at_np_solvent(cg_residue_type,cg_residues):
     frag_location = gen.fragment_location(cg_residue_type)
     frag_template, frag_mass_template = at_mod.get_atomistic(frag_location, cg_residue_type)
 
+    total = len(cg_residues)
     for cg_resid, cg_residue in enumerate(cg_residues):
+        gen.print_progress('Converting ' + cg_residue_type, cg_resid + 1, total)
         atomistic_fragments[cg_resid] = {}
         # Deep-copy the template so each residue gets an independent, mutable copy.
         residue_type[cg_residue_type] = copy.deepcopy(frag_template)
@@ -79,6 +81,7 @@ def at_np_solvent(cg_residue_type,cg_residues):
             chiral = at_mod.get_chiral_non_carbonyl(atomistic_fragments[cg_resid])
             atomistic_fragments[cg_resid] = at_mod.correct_chiral_atoms(atomistic_fragments[cg_resid], chiral)            
         atomistic_fragments_list, sol_p_bead =  sort_np_dictionary(atomistic_fragments[cg_resid], atomistic_fragments_list)
+    gen.finish_progress('Converting ' + cg_residue_type, total)
     if cg_residue_type in g_var.sol_residues:
         return atomistic_fragments_list, sol_p_bead*len(cg_residues)
     else:
@@ -95,4 +98,4 @@ def sort_np_dictionary(atomistic_fragments, atomistic_fragments_list):
         atomistic_fragments_list.append(atom)    
         if atom['resid_ori'] > sol_p_bead:
             sol_p_bead = atom['resid_ori']
-    return atomistic_fragments_list, sol_p_bead
+    return atomistic_fragments_list, sol_p_bead 

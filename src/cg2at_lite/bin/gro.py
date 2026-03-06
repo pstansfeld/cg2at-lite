@@ -3,10 +3,10 @@
 import os, sys
 import numpy as np
 import subprocess 
-import multiprocessing as mp
 from shutil import rmtree
 import time
 from cg2at_lite.bin import gen, g_var, at_mod, read_in, at_mod_p
+from cg2at_lite.bin.exceptions import CG2ATError, InputError, TopologyError, GromacsError
 
 terminal_PTMs = ['CYST', 'GLYM']
 
@@ -16,7 +16,7 @@ def collect_input():
     if os.path.exists(g_var.args.c):
         print('You have selected the following coarse-grained input file: ', g_var.args.c)
     else:
-        sys.exit('Cannot find CG input file: '+g_var.args.c)
+        raise InputError('Cannot find CG input file: '+g_var.args.c)
     gen.mkdir_directory(g_var.working_dir)
     gen.mkdir_directory(g_var.final_dir)
     gen.mkdir_directory(g_var.input_directory)
@@ -28,12 +28,12 @@ def collect_input():
             if os.path.exists(file_name):
                 print( file_name )
             else:
-                sys.exit('cannot find atomistic input file: '+file_name)
+                raise InputError('cannot find atomistic input file: '+file_name)
             gen.file_copy_and_check(file_name, g_var.input_directory+gen.path_leaf(file_name)[1])
             os.chdir(g_var.input_directory)
             gromacs([g_var.args.gmx+' editconf -f '+gen.path_leaf(file_name)[1]+' -resnr 0 -o '+g_var.input_directory+'AT_INPUT_'+str(file_num)+'.pdb', g_var.input_directory+'AT_INPUT_'+str(file_num)+'.pdb'])
             if not os.path.exists(g_var.input_directory+'AT_INPUT_'+str(file_num)+'.pdb'):
-                sys.exit('\nFailed to process atomistic input file.\nCheck gromacs outputs in '+g_var.input_directory)
+                raise GromacsError('Failed to process atomistic input file. Check gromacs outputs in '+g_var.input_directory)
             else:
                 g_var.user_at_input = True
             os.chdir(g_var.start_dir)
@@ -44,7 +44,7 @@ def collect_input():
         gromacs([g_var.args.gmx+' -version', 'version.txt'])
     gromacs([g_var.args.gmx+' editconf -f '+gen.path_leaf(g_var.args.c)[1]+' -resnr 0 -c -o '+g_var.input_directory+'CG_INPUT.pdb', g_var.input_directory+'CG_INPUT.pdb'])
     if not os.path.exists(g_var.input_directory+'CG_INPUT.pdb'):
-        sys.exit('\nFailed to process coarse-grained input file')      
+        raise GromacsError('Failed to process coarse-grained input file')      
 
 #### gromacs parser
 def gromacs(gro):
@@ -161,7 +161,7 @@ def ask_ter_question(residue, options, chain):
             if number < len(options):
                 return number
         except KeyboardInterrupt:
-            sys.exit('\nInterrupted')
+            raise KeyboardInterrupt
         except BaseException:
             print("Oops!  That was a invalid choice")
 
@@ -184,22 +184,8 @@ def ask_terminal(sys_info, residue_type):
 def run_parallel_pdb2gmx_min(res_type: str, sys_info: dict) -> None:
     """Run pdb2gmx and minimisation for every chain of res_type sequentially.
 
-    Previously this used mp.Pool to run chains in parallel.  That approach had
-    three interlocking failure modes:
-
-    1. **Shared log file race condition** — every worker appended to the same
-       ``gromacs_outputs`` file simultaneously with no locking, causing
-       corruption and missed error detection.
-    2. **CPU oversubscription** — GROMACS already uses internal threading
-       (-ntmpi / -ntomp).  Launching N pool workers each running a
-       multi-threaded GROMACS process floods the CPU, which is why failures
-       appeared on later chains (e.g. chain 14) in larger systems.
-    3. **os.chdir() in workers** — fragile when subprocesses inherit the
-       working directory in unexpected states.
-
-    Serial execution is reliable, and pdb2gmx+minimisation per chain is fast
-    enough that the wall-time difference is negligible for typical systems.
-    The -ncpus flag is already marked DEPRECATED in the argument parser.
+pdb2gmx and minimisation are run serially — GROMACS uses its own internal
+    threading, so a process pool would oversubscribe CPUs and cause failures.
     """
     os.chdir(g_var.working_dir + res_type)
     make_min(res_type)
@@ -319,7 +305,7 @@ def convert_topology(topol, protein_number, res_type):
                     itp_write.write('#ifdef VERY_HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_very_high_posre.itp\"\n#endif\n')
                     itp_write.write('#ifdef ULTRAPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_ultra_posre.itp\"\n#endif\n')
     else:
-        sys.exit('cannot find : '+topol+'_'+str(protein_number)+'.top')
+        raise InputError('cannot find: '+topol+str(protein_number)+'.top')
 
 def write_topol(residue_type, residue_number, chain):
 #### open topology file
@@ -334,11 +320,11 @@ def write_topol(residue_type, residue_number, chain):
                     topol_write.write('#include \"'+directory[0]+residue_type+'/'+gen.swap_to_solvent(residue_type)+'.itp\"')
                     found=True
             if not found:
-                sys.exit('cannot find itp : '+residue_type+'/'+gen.swap_to_solvent(residue_type)+'.itp')
+                raise InputError('cannot find itp: '+residue_type+'/'+gen.swap_to_solvent(residue_type)+'.itp')
         elif os.path.exists(g_var.working_dir+'/'+residue_type.split('_')[0]+'/'+residue_type+chain+'.itp'):
             topol_write.write('#include \"'+residue_type+chain+'.itp\"\n')
         else:
-            sys.exit('cannot find itp : '+residue_type+'/'+residue_type+chain)
+            raise InputError('cannot find itp: '+residue_type+'/'+residue_type+chain)
     #### topology section headers
         topol_write.write('\n\n[ system ]\n; Name\nSomething clever....\n\n[ molecules ]\n; Compound        #mols\n')
     #### individual number of residues
@@ -382,7 +368,7 @@ def check_atom_type(line, a_line, atomtypes_itp_lines):
     bond = int(np.where(line_sep[1]==a_line[:,1])[0]) 
     if name == bond: 
         if float(line_sep[5]) != float(a_line[name][5]) or float(line_sep[6]) != float(a_line[name][6]): 
-            sys.exit('\nThere are duplicate atomtypes in your molecules: \n'+line) 
+            raise TopologyError('There are duplicate atomtypes in your molecules: '+line) 
 
 def strip_atomtypes(itp_file): 
     with open(itp_file, 'r') as itp_input: 

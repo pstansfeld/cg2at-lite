@@ -15,7 +15,6 @@ def read_initial_cg_pdb(test: bool = False) -> str:
         print('\nReading coarse-grained input:\n')
     residue_list: dict = {}
     count = 0
-    # Fix: use explicit sentinel instead of 'residue_prev' not in locals()
     residue_prev: Optional[dict] = None
     line_sep_prev: Optional[dict] = None
     with open(g_var.input_directory+'CG_INPUT.pdb', 'r') as pdb_input:
@@ -64,11 +63,11 @@ def read_initial_cg_pdb(test: bool = False) -> str:
 def filter_input(pdb_lines_raw, CG=True):
     pdb_lines_atoms = [gen.pdbatom(j) for j in pdb_lines_raw if j.startswith('ATOM ')] 
     if len(pdb_lines_atoms) == 0:
-        sys.exit('input coarse-grained structure seems to contain no beads')
+        raise InputError('input coarse-grained structure seems to contain no beads')
     if CG:
         box_vec =  [j for j in pdb_lines_raw if j.startswith('CRYST')]
         if len(box_vec) == 0:
-            sys.exit('The input file is missing the Box vectors')
+            raise InputError('The input file is missing the Box vectors')
         return pdb_lines_atoms, box_vec
     return pdb_lines_atoms
 
@@ -76,7 +75,6 @@ def filter_input(pdb_lines_raw, CG=True):
 def add_to_cg_database(line_sep_prev: dict, count: int, residue_list: dict) -> None:
     """Populate g_var.cg_residues with the completed residue_list for this residue."""
     if line_sep_prev['residue_name'] in g_var.sol_residues + g_var.ion_residues + g_var.np_residues:
-        # Fix: removed redundant `[count]={}` assignment immediately overwritten below
         g_var.cg_residues[line_sep_prev['residue_name']][count] = residue_list
         if line_sep_prev['residue_name'] in g_var.hydration:
             sol_res_list = {
@@ -87,10 +85,8 @@ def add_to_cg_database(line_sep_prev: dict, count: int, residue_list: dict) -> N
             }
             g_var.cg_residues[g_var.hydration[line_sep_prev['residue_name']]][count] = sol_res_list
     elif line_sep_prev['residue_name'] in g_var.o_residues:
-        # Fix: removed redundant `['OTHER'][count]={}` overwritten on next line
         g_var.cg_residues['OTHER'][count] = residue_list
     else:
-        # Fix: removed redundant `['PROTEIN'][count]={}` overwritten on next line
         g_var.cg_residues['PROTEIN'][count] = residue_list
 
 
@@ -125,7 +121,7 @@ def add_residue_to_dictionary(line_sep):
     elif line_sep['residue_name'] == 'SKIP':
         pass
     else:
-        sys.exit('\n'+line_sep['residue_name']+' is not in the fragment database!') 
+        raise FragmentNotFoundError(line_sep['residue_name']+' is not in the fragment database') 
 
 
 def check_new_box(coord,box, new_box):
@@ -216,11 +212,6 @@ def swap(atom, residue, resid):
 def read_in_atomistic(protein: str) -> tuple:
     """Read an atomistic PDB into a nested residue/atom dictionary.
 
-    Fixes applied vs original:
-    - ``'line_sep_prev' not in locals()`` replaced with ``None`` sentinel  (Fix 3)
-    - ``'prev_atom_coord' in locals()`` replaced with explicit tracking     (Fix 3)
-    - ``'C_ter' in locals()`` replaced with ``C_ter is not None``           (Fix 3)
-    - Tautological ``atom in atom in dict`` guard removed                   (Fix 8)
     """
     os.chdir(g_var.start_dir)
     if not os.path.exists(protein):
@@ -228,7 +219,6 @@ def read_in_atomistic(protein: str) -> tuple:
     atomistic_protein_input: dict = {}
     chain_count = g_var.chain_count if g_var.input_directory in protein else 0
     new_chain = False
-    # Fix 3: explicit sentinels replace locals() checks
     line_sep_prev: Optional[dict] = None
     prev_atom_coord: Optional[list] = None
     C_ter: Optional[list] = None
@@ -263,7 +253,7 @@ def read_in_atomistic(protein: str) -> tuple:
                         if g_var.res_top[line_sep['residue_name']]['CONNECT']['atoms'][line_sep['atom_name']] > 0:
                             C_ter = [line_sep['x'], line_sep['y'], line_sep['z']]
                             C_resid = line_sep['residue_id']
-                        elif C_ter is not None:  # Fix 3: was 'C_ter' in locals()
+                        elif C_ter is not None:
                             N_resid = line_sep['residue_id']
                             N_ter = [line_sep['x'], line_sep['y'], line_sep['z']]
                             dist = gen.calculate_distance(N_ter, C_ter)
@@ -282,7 +272,6 @@ def read_in_atomistic(protein: str) -> tuple:
                         'resid': line_sep['residue_id'],
                     }
                     if line_sep['atom_name'] in g_var.res_top[line_sep['residue_name']]['ATOMS']:
-                        # Fix 8: removed tautological `atom in atom in dict` (always True for strings)
                         if line_sep['atom_name'] in g_var.res_top[line_sep['residue_name']]['atom_masses']:
                             atomistic_protein_input[chain_count][line_sep['residue_id']][line_sep['atom_number']]['frag_mass'] = (
                                 g_var.res_top[line_sep['residue_name']]['atom_masses'][line_sep['atom_name']]
@@ -303,4 +292,4 @@ def duplicate_chain(test=False):
                     g_var.atomistic_protein_input_raw[g_var.chain_count]=copy.deepcopy(g_var.atomistic_protein_input_raw[duplicate[0]])
                     g_var.chain_count+=1
             else:
-                sys.exit('your atomistic chain duplication input is incorrect')
+                raise InputError('your atomistic chain duplication input is incorrect')

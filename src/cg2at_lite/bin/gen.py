@@ -6,12 +6,14 @@ import math
 import multiprocessing as mp
 import shutil
 from shutil import copyfile, copytree
+from functools import lru_cache
 import glob
 import re
 import copy
 import ntpath
 from typing import Optional
 from cg2at_lite.bin import g_var
+from cg2at_lite.bin.exceptions import CG2ATError, InputError, TopologyError, FragmentNotFoundError, GromacsError
 from cg2at_lite.bin.exceptions import (
     CG2ATError, InputError, FragmentNotFoundError,
     TopologyError, GromacsError,
@@ -151,17 +153,16 @@ def fragment_selection(test=False):
     fetch_residues(frag_location, g_var.fragments_available, fragment_number, test)
 
 def correct_number_cpus():
-    if g_var.args.ncpus != None:
-        if g_var.args.ncpus > mp.cpu_count():
-            print('you have selected to use more CPU cores than are available: '+str(g_var.args.ncpus))
-            print('defaulting to the maximum number of cores: '+str(mp.cpu_count()))
-            g_var.args.ncpus = mp.cpu_count()
-    else:
-        if mp.cpu_count() >= 8:
-            g_var.args.ncpus = 8
-        else:
-            g_var.args.ncpus = mp.cpu_count()
-    g_var.opt['ncpus'] = g_var.args.ncpus
+    if g_var.args.ncpus is not None:
+        import warnings
+        warnings.warn(
+            '-ncpus is deprecated and has no effect. '
+            'pdb2gmx/minimisation now runs serially to avoid GROMACS threading conflicts.',
+            DeprecationWarning, stacklevel=2,
+        )
+    # ncpus is kept in g_var.opt for any legacy code that reads it,
+    # but it no longer controls parallelism.
+    g_var.opt['ncpus'] = 1
 
 def check_input_flag() -> None:
     if g_var.get_forcefield and g_var.args.c is None:
@@ -291,7 +292,7 @@ def sort_swap_group():
             if re.split(':', swap)[1].split(',') is not type(int):
                 res_e = re.split(':', swap)[1].split(',')
             else:
-                sys.exit('swap layout is not correct')
+                raise InputError('swap layout is not correct')
             
             if len(res_s) == len(res_e):
                 res_range, res_id = split_swap(swap)
@@ -306,7 +307,7 @@ def sort_swap_group():
                 g_var.swap_dict[res_s[0]][res_s[0]+':'+res_e[0]]['resid']=res_id
                 g_var.swap_dict[res_s[0]][res_s[0]+':'+res_e[0]]['range']=res_range
             else:
-                sys.exit('The length of your swap groups do not match')
+                raise InputError('The length of your swap groups do not match')
         
 def print_swap_residues():
     if g_var.args.swap != None:
@@ -422,7 +423,7 @@ def sort_alternate_residues(line_sep, residue):
         if alt_res not in g_var.alt_res_name:
             g_var.alt_res_name[alt_res] = residue
         else:
-            sys.exit('The alternate residue name: \"'+alt_res+'\" already corresponds to: \"'+
+            raise TopologyError('The alternate residue name: \"'+alt_res+'\" already corresponds to: \"'+
                      g_var.alt_res_name[alt_res]+'\"')
 
 def sort_hydration(line_sep, residue):
@@ -457,7 +458,7 @@ def get_fragment_topology(residue, location):
                 line_sep = pdbatom(line)
                 grouped_atoms[group_temp][bead].append(line_sep['atom_number'])
             if 'bead' not in locals():
-                sys.exit('error reading:\n'+location)
+                raise InputError('error reading: '+location)
             ### return backbone info for each aminoacid residue
             if bead in g_var.res_top[residue]['CONNECT']:
                 if line.startswith('ATOM'):
@@ -544,7 +545,7 @@ def fetch_atom_masses(forcefield_loc):
                     line_sep = line.split()       
                     at_mass[line_sep[0]]=line_sep[1] 
     else:
-        sys.exit('cannot find atomtypes.dat in the force field: '+forcefield_loc)
+        raise TopologyError('cannot find atomtypes.dat in the force field: '+forcefield_loc)
     return at_mass
 
 def fetch_atoms_water_ion(forcefield_loc, at_mass_p):
@@ -613,14 +614,14 @@ def fetch_bond_info(residue, rtp, at_mass, location):
                                 break
             # if 'atoms' not in locals():
             #     print('Issue finding information for residue: ',residue)
-            #     sys.exit('There is a issue with: \n'+rtp_file)
+            #     raise TopologyError('There is an issue with: '+rtp_file)
         if len(heavy_dict) > 0:
             break
     if 'atoms' not in locals():
         print('Issue finding information for residue: ',residue)
-        sys.exit('There is a issue with: \n'+rtp_file)
+        raise TopologyError('There is an issue with: '+rtp_file)
     if not residue_present:
-        sys.exit('cannot find topology information for: '+residue)
+        raise TopologyError('cannot find topology information for: '+residue)
     bond_dict=np.array(bond_dict)
     hydrogen = {}
     heavy_bond = {}
@@ -683,13 +684,19 @@ def add_to_topology_list(bond_1, bond_2, top_list, dict1, dict2, conversion, res
             top_list[bond[0]].append(bond[1])
     return top_list, amide_hydrogen
 
-def fragment_location(residue):  
-#### runs through dirctories looking for the atomistic fragments returns the correct location
-    for res_type in [g_var.np_directories, g_var.p_directories, g_var.mod_directories, g_var.o_directories, g_var.sol_directories, g_var.ion_directories]:
+@lru_cache(maxsize=None)
+def fragment_location(residue: str) -> str:
+    """Return the path to the fragment PDB for *residue*.
+
+    Result is cached so the filesystem is only searched once per residue name
+    regardless of how many copies of that residue exist in the system.
+    """
+    for res_type in [g_var.np_directories, g_var.p_directories, g_var.mod_directories,
+                     g_var.o_directories, g_var.sol_directories, g_var.ion_directories]:
         for directory in range(len(res_type)):
-            if os.path.exists(res_type[directory][0]+residue+'/'+swap_to_solvent(residue)+'.pdb'):
-                return res_type[directory][0]+residue+'/'+swap_to_solvent(residue)+'.pdb'            
-    raise FragmentNotFoundError('Cannot find fragment: '+residue+'/'+swap_to_solvent(residue)+'.pdb')
+            if os.path.exists(res_type[directory][0] + residue + '/' + swap_to_solvent(residue) + '.pdb'):
+                return res_type[directory][0] + residue + '/' + swap_to_solvent(residue) + '.pdb'
+    raise FragmentNotFoundError('Cannot find fragment: ' + residue + '/' + swap_to_solvent(residue) + '.pdb')
 
 
 def read_database_directories():
@@ -741,14 +748,14 @@ def ask_database(provided, selection_type, test=False):
                 elif test:
                     return True
         except KeyboardInterrupt:
-            sys.exit('\nInterrupted')
+            raise KeyboardInterrupt
         except BaseException:
             if test:
                 return True
             print("Oops!  That was a invalid choice")
             attempt+=1
             if attempt > 3:
-                sys.exit('Too many invalid choices')
+                raise InputError('Too many invalid choices')
 
 def fetch_frag_number(fragments_available, test=False):
     fragment_number = []
@@ -766,7 +773,7 @@ def fetch_frag_number(fragments_available, test=False):
     else:
         if g_var.args.info:
             return []
-        sys.exit('no fragment databases selected')
+        raise InputError('no fragment databases selected')
 
 def add_to_list(root, dirs, list_to_add, residues):
     list_to_add.append([])
@@ -811,7 +818,8 @@ def fetch_residues(frag_dir, fragments_available_prov, fragment_number, test=Fal
                         add_to_list(root, dirs, g_var.sol_directories, g_var.sol_residues)
                     break
             else:
-                print('Cannot find fragments for: ', directory_type[1:-1] )
+                if g_var.args.v >= 1:
+                    print('No ' + directory_type[1:-1] + ' fragments found in ' + location + ' (optional)')
     
 
 def print_water_selection(water):
@@ -833,12 +841,12 @@ def ask_for_water_model(water):
             if number < len(water):
                 return water[number]
         except KeyboardInterrupt:
-            sys.exit('\nInterrupted')
+            raise KeyboardInterrupt
         except BaseException:
             print("Oops!  That was a invalid choice")
             attempt+=1
             if attempt > 3:
-                sys.exit('Too many invalid choices')
+                raise InputError('Too many invalid choices')
 
 def check_water_molecules(test=False):
     water_info=[]        
@@ -861,6 +869,9 @@ def check_water_molecules(test=False):
         else:
             if g_var.args.w in water:
                 print('\nYou have selected the water model: '+g_var.args.w)
+            elif len(water) == 1:
+                g_var.args.w = water[0]
+                print('\nOnly one water model found, using it automatically: '+g_var.args.w)
             else:
                 print(print_water_selection(g_var.water))
                 g_var.args.w = ask_for_water_model(g_var.water)
@@ -916,7 +927,7 @@ def pdbatom(line):
         return dict([('atom_number',int(line[7:11].replace(" ", ""))),('atom_name',str(line[12:16]).replace(" ", "")),('residue_name',str(line[16:21]).replace(" ", "")),\
             ('chain',line[21]),('residue_id',int(line[22:26])), ('x',float(line[30:38])),('y',float(line[38:46])),('z',float(line[46:54]))])
     except BaseException:
-        sys.exit('\npdb line is wrong:\t'+line) 
+        raise InputError('pdb line is wrong: '+line) 
 
 def create_pdb(file_name):
     pdb_output = open(file_name, 'w')

@@ -18,8 +18,8 @@ if str(_src) not in sys.path:
     sys.path.insert(0, str(_src))
 
 import numpy as np
-import time
 import multiprocessing as mp
+import time
 from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, read_in, g_var, check_library
 from cg2at_lite.bin.exceptions import CG2ATError
 
@@ -27,8 +27,6 @@ from cg2at_lite.bin.exceptions import CG2ATError
 def _run() -> None:
     """Core pipeline.  Separated from main() so it can be wrapped cleanly."""
 
-    # Fix 13: g_var.version = 1 removed. Version is now the single string
-    # constant g_var.VERSION defined at module level in g_var.py.
     g_var.script_update = '05-03-2026'
     g_var.other = {'DA': 'A', 'DG': 'G', 'DC': 'C', 'DT': 'T',
                    'DAX': 'A', 'DGX': 'G', 'DCX': 'C', 'DTX': 'T'}
@@ -86,7 +84,7 @@ def _run() -> None:
             g_var.cg_residues, 'PROTEIN'
         )
         if not g_var.user_at_input and g_var.args.v >= 1:
-            print(gen.print_sequence_info('PROTEIN'))   # Fix 11: correct spelling
+            print(gen.print_sequence_info('PROTEIN'))
 
         g_var.tc['p_d_n_t'] = time.time()
         if g_var.user_at_input:
@@ -111,7 +109,7 @@ def _run() -> None:
         if not os.path.exists(g_var.working_dir + 'PROTEIN/PROTEIN_de_novo_merged.pdb'):
             gro.run_parallel_pdb2gmx_min('PROTEIN', g_var.ter_res['PROTEIN'])
             print('Merging de_novo protein chains')
-            at_mod.merge_individual_chain_pdbs(    # Fix 11: correct spelling
+            at_mod.merge_individual_chain_pdbs( 
                 g_var.working_dir + 'PROTEIN/MIN/PROTEIN_de_novo', '.pdb', 'PROTEIN'
             )
 
@@ -119,11 +117,11 @@ def _run() -> None:
                 g_var.working_dir + 'PROTEIN/PROTEIN_aligned_merged.pdb'):
             print('Merging aligned protein chains')
             if g_var.args.o not in ['none', 'align']:
-                at_mod.merge_individual_chain_pdbs(    # Fix 11
+                at_mod.merge_individual_chain_pdbs(
                     g_var.working_dir + 'PROTEIN/MIN/PROTEIN_aligned', '.pdb', 'PROTEIN'
                 )
             else:
-                at_mod.merge_individual_chain_pdbs(    # Fix 11
+                at_mod.merge_individual_chain_pdbs(
                     g_var.working_dir + 'PROTEIN/PROTEIN_aligned', '_gmx_checked.pdb', 'PROTEIN'
                 )
 
@@ -134,18 +132,16 @@ def _run() -> None:
             g_var.cg_residues, 'OTHER'
         )
         if g_var.args.v >= 1:
-            print(gen.print_sequence_info('OTHER'))    # Fix 11
+            print(gen.print_sequence_info('OTHER'))
         at_mod_p.finalise_novo_atomistic(g_var.other_atomistic, 'OTHER')
         gro.run_parallel_pdb2gmx_min('OTHER', g_var.ter_res['OTHER'])
         if not os.path.exists(g_var.working_dir + 'OTHER/OTHER_de_novo_merged.pdb'):
-            at_mod.merge_individual_chain_pdbs(        # Fix 11
+            at_mod.merge_individual_chain_pdbs(    
                 g_var.working_dir + 'OTHER/MIN/OTHER_de_novo', '.pdb', 'OTHER'
             )
     g_var.tc['f_o_t'] = time.time()
 
     # --- Non-protein residues ---
-    # Fix 9: removed ~10 lines of stale commented-out mp.Pool code.
-    # Re-introduce parallelism here using concurrent.futures if needed.
     non_protein_types = [k for k in g_var.cg_residues if k not in ['PROTEIN', 'OTHER']]
     if non_protein_types:
         print('\nConverting the following residues: \n')
@@ -224,8 +220,6 @@ def _run() -> None:
 
 def main() -> None:
     mp.freeze_support()
-    # Fix 5: CG2ATError (and subclasses) produce a clean one-line message
-    # rather than a full traceback; unexpected errors still surface normally.
     try:
         _run()
     except CG2ATError as exc:
