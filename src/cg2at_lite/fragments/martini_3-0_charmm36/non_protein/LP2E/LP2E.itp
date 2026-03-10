@@ -1,6 +1,6 @@
 [ moleculetype ]
 ; Name            nrexcl
-LIP2               3
+LP2E               3
 
 [ atoms ]
 ;   nr       type  resnr residue  atom   cgnr     charge       mass  typeB    chargeB      massB
@@ -2539,5 +2539,5 @@ LIP2               3
 
 ; Include Position restraint file
 #ifdef POSRES
-#include "LIP2_posres.itp"
+#include "LP2E_posres.itp"
 #endif
