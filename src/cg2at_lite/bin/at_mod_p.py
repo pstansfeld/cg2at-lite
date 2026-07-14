@@ -54,7 +54,6 @@ def build_multi_residue_atomistic_system(cg_residues, sys_type):
                                     g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number]['CA']['coord'], 1))
                             else:
                                 g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number][group_bead]['coord'], 1))
-                            #g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number][group_bead]['coord'], 1)) 
                 xyz_rot_apply = at_mod.get_rotation(cg_connect, at_connect, center, resname, group, residue_number)
                 coord_atomistic[chain_count] = at_mod.apply_rotations(coord_atomistic[chain_count],residue_number, group_fit, center, xyz_rot_apply)
         if new_chain:
