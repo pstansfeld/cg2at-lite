@@ -47,7 +47,14 @@ def build_multi_residue_atomistic_system(cg_residues, sys_type):
                     if group_bead in g_var.res_top[resname]['CONNECT']:
                         at_connect, cg_connect, new_chain = at_mod.BB_connectivity(at_connect,cg_connect, cg_residues[sys_type], group_fit[group_bead], residue_number, group_bead, resname)
                         if sys_type == 'PROTEIN':
-                            g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number][group_bead]['coord'], 1)) 
+                            # New Martini 3 (explicit backbone N/CA/C/O): use CA, append once per residue
+                            # Old Martini 3 (single BB bead): append BB coord as before
+                            if 'CA' in cg_residues[sys_type][residue_number]:
+                                if group_bead == 'N':
+                                    g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number]['CA']['coord'], 1))
+                            else:
+                                g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number][group_bead]['coord'], 1))
+                            #g_var.backbone_coords[chain_count].append(np.append(cg_residues[sys_type][residue_number][group_bead]['coord'], 1)) 
                 xyz_rot_apply = at_mod.get_rotation(cg_connect, at_connect, center, resname, group, residue_number)
                 coord_atomistic[chain_count] = at_mod.apply_rotations(coord_atomistic[chain_count],residue_number, group_fit, center, xyz_rot_apply)
         if new_chain:
