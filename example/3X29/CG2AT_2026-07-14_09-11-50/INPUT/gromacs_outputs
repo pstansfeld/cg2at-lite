@@ -1,0 +1,11 @@
+                     :-) GROMACS - gmx editconf, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/3X29/CG2AT_2026-07-14_09-11-50/INPUT
+Command line:
+  gmx editconf -f 3X29_CG.gro -resnr 0 -c -o /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/3X29/CG2AT_2026-07-14_09-11-50/INPUT/CG_INPUT.pdb
+
+
+GROMACS reminds you: "In a Deep Deep Well" (Nick Cave)
+

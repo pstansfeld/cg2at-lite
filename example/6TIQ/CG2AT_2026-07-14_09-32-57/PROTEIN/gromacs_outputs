@@ -1,0 +1,111 @@
+                     :-) GROMACS - gmx pdb2gmx, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/PROTEIN
+Command line:
+  gmx pdb2gmx -f PROTEIN_de_novo_0.pdb -o PROTEIN_de_novo_0_gmx.pdb -water none -p PROTEIN_de_novo_0.top -i PROTEIN_0_posre.itp -ter
+
+Opening force field file ./charmm36-cg2at.ff/aminoacids.r2b
+Opening force field file ./charmm36-cg2at.ff/carb.r2b
+Opening force field file ./charmm36-cg2at.ff/cgenff.r2b
+Opening force field file ./charmm36-cg2at.ff/ethers.r2b
+Opening force field file ./charmm36-cg2at.ff/lipid.r2b
+Opening force field file ./charmm36-cg2at.ff/metals.r2b
+Opening force field file ./charmm36-cg2at.ff/na.r2b
+Opening force field file ./charmm36-cg2at.ff/silicates.r2b
+Opening force field file ./charmm36-cg2at.ff/solvent.r2b
+All occupancies are one
+Opening force field file ./charmm36-cg2at.ff/atomtypes.atp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.rtp
+Opening force field file ./charmm36-cg2at.ff/carb.rtp
+Opening force field file ./charmm36-cg2at.ff/cgenff.rtp
+Opening force field file ./charmm36-cg2at.ff/ethers.rtp
+Opening force field file ./charmm36-cg2at.ff/lipid.rtp
+Opening force field file ./charmm36-cg2at.ff/metals.rtp
+Opening force field file ./charmm36-cg2at.ff/na.rtp
+Opening force field file ./charmm36-cg2at.ff/silicates.rtp
+Opening force field file ./charmm36-cg2at.ff/solvent.rtp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.hdb
+Opening force field file ./charmm36-cg2at.ff/carb.hdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.hdb
+Opening force field file ./charmm36-cg2at.ff/ethers.hdb
+Opening force field file ./charmm36-cg2at.ff/lipid.hdb
+Opening force field file ./charmm36-cg2at.ff/metals.hdb
+Opening force field file ./charmm36-cg2at.ff/na.hdb
+Opening force field file ./charmm36-cg2at.ff/silicates.hdb
+Opening force field file ./charmm36-cg2at.ff/solvent.hdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.n.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.n.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.n.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.n.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.n.tdb
+Opening force field file ./charmm36-cg2at.ff/na.n.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.n.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.n.tdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.c.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.c.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.c.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.c.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.c.tdb
+Opening force field file ./charmm36-cg2at.ff/na.c.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.c.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.c.tdb
+Analysing hydrogen-bonding network for automated assignment of histidine
+ protonation. 425 donors and 427 acceptors were found.
+There are 570 hydrogen bonds
+Will use HISE for residue 121
+Will use HISE for residue 180
+Will use HISE for residue 272
+8 out of 8 lines of specbond.dat converted successfully
+Special Atom Distance matrix:
+                    MET0  HIS121  CYS126  MET128  MET154  HIS180  CYS231
+                     SD5  NE2951   SG986  SD1001  SD1198 NE21411  SG1798
+  HIS121  NE2951   0.513
+  CYS126   SG986   2.366   2.046
+  MET128  SD1001   2.851   2.548   0.507
+  MET154  SD1198   2.414   2.018   1.217   1.467
+  HIS180 NE21411   1.770   1.909   2.346   2.643   2.241
+  CYS231  SG1798   3.425   3.708   3.816   3.938   4.005   1.976
+  HIS272 NE22092   4.924   5.015   4.548   4.501   4.349   3.154   2.365
+                
+                
+Opening force field file ./charmm36-cg2at.ff/aminoacids.arn
+
+Long Bond (60-61 = 0.260046 nm)
+Before cleaning: 11424 pairs
+Before cleaning: 11489 dihedrals
+
+GROMACS reminds you: "Your Excellency, I have no need of this hypothesis." (Pierre Laplace, to Napoleon on why his works on celestial mechanics make no mention of God.)
+
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/PROTEIN
+Command line:
+  gmx grompp -f em_PROTEIN.mdp -p topol_PROTEIN_de_novo_0.top -c PROTEIN_de_novo_0_gmx_checked.pdb -o MIN/PROTEIN_de_novo_0 -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 1 [file topol_PROTEIN_de_novo_0.top, line 12]:
+  System has non-zero total charge: 3.000000
+  Total charge should normally be an integer. See
+  https://manual.gromacs.org/current/user-guide/floating-point.html
+  for discussion on how close it should be to an integer.
+
+
+
+Number of degrees of freedom in T-Coupling group rest is 12945.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 2 [file em_PROTEIN.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There were 2 NOTEs
+
+GROMACS reminds you: "Friends don't let friends use Berendsen!" (John Chodera (on Twitter))
+

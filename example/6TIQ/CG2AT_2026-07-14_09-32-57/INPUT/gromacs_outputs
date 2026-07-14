@@ -1,0 +1,11 @@
+                     :-) GROMACS - gmx editconf, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/INPUT
+Command line:
+  gmx editconf -f 6TIQ_CG.gro -resnr 0 -c -o /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/INPUT/CG_INPUT.pdb
+
+
+GROMACS reminds you: "Science is a way of thinking much more than it is a body of knowledge." (Carl Sagan)
+

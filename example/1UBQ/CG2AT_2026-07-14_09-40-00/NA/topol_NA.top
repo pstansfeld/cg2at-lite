@@ -1,0 +1,11 @@
+; Include force field parameters
+#include "../FINAL/charmm36-cg2at.ff/forcefield.itp"
+#include "/storage/lfsmgr_grp/mzsrjr/cg2at-lite/src/cg2at_lite/fragments/martini_3-1_new_lipidome_charmm36/ions/NA/NA.itp"
+
+[ system ]
+; Name
+Something clever....
+
+[ molecules ]
+; Compound        #mols
+NA    41

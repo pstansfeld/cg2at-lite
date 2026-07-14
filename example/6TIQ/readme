@@ -1,0 +1,1 @@
+python /storage/lfsmgr_grp/mzsrjr/cg2at-lite/src/cg2at_lite/bin/cg2at.py -c 6TIQ_CG.gro -fg martini_3-2_nextgen_protein_charmm36 martini_3-1_new_lipidome_charmm36 -ff charmm36-jul2022 -w tip3p

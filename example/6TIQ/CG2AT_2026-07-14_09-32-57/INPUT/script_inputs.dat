@@ -1,0 +1,31 @@
+
+/storage/lfsmgr_grp/mzsrjr/cg2at-lite/src/cg2at_lite/bin/cg2at.py -c 6TIQ_CG.gro -fg martini_3-2_nextgen_protein_charmm36 martini_3-1_new_lipidome_charmm36 -ff charmm36-jul2022 -w tip3p 
+
+info     False          
+c        6TIQ_CG.gro    
+a        None           
+ff       charmm36-cg2at.ff
+fg       ['martini_3-2_nextgen_protein_charmm36', 'martini_3-1_new_lipidome_charmm36']
+w        TIP3P          
+o        all            
+loc      CG2AT_2026-07-14_09-32-57
+d        []             
+group    None           
+ter      False          
+nt       False          
+ct       False          
+cys      7              
+silent   False          
+mod      False          
+sf       0.9            
+ov       0.3            
+swap     None           
+box      None           
+vs       False          
+disre    False          
+gmx      /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+posre    None           
+compare  None           
+messy    False          
+v        0              
+ncpus    1              

@@ -1,0 +1,11 @@
+                     :-) GROMACS - gmx editconf, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/INPUT
+Command line:
+  gmx editconf -f 1UBQ_CG.gro -resnr 0 -c -o /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/INPUT/CG_INPUT.pdb
+
+
+GROMACS reminds you: "I can't relate to you" (Bad Religion)
+
