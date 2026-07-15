@@ -1,0 +1,12 @@
+; Include force field parameters
+#include "../FINAL/charmm36-cg2at.ff/forcefield.itp"
+#include "PROTEIN_de_novo_0.itp"
+
+
+[ system ]
+; Name
+Something clever....
+
+[ molecules ]
+; Compound        #mols
+PROTEIN_0    1

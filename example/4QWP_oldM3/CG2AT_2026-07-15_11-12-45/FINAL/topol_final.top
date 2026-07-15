@@ -1,0 +1,20 @@
+; Include force field parameters
+#include "../FINAL/charmm36-cg2at.ff/forcefield.itp"
+#include "PROTEIN_0.itp"
+#include "TIP3P.itp"
+#include "NA.itp"
+#include "CL.itp"
+[ system ]
+; Name
+Something clever....
+
+[ molecules ]
+; Compound        #mols
+PROTEIN_0    1
+TIP3P    24352
+NA    84
+CL    67
+
+#ifdef DISRES
+#include "PROTEIN_disres.itp"
+#endif

@@ -1,0 +1,103 @@
+                      :-) GROMACS - gmx mdrun, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/W/MIN
+Command line:
+  gmx mdrun -ntmpi 1 -v -pin on -deffnm W_merged_min -c ../W_merged.pdb
+
+
+WARNING: An error occurred while sanity checking device #0. An unhandled error from a previous CUDA operation was detected. CUDA error #209 (cudaErrorNoKernelImageForDevice): no kernel image is available for execution on the device.
+
+Reading file W_merged_min.tpr, VERSION 2023.5 (single precision)
+Using 1 MPI thread
+Using 24 OpenMP threads 
+
+
+Steepest Descents:
+   Tolerance (Fmax)   =  7.50000e+02
+   Number of steps    =        20000
+Step=    0, Dmax= 1.0e-03 nm, Epot=  1.61063e+06 Fmax= 1.57029e+05, atom= 58656
+Step=    1, Dmax= 1.0e-03 nm, Epot=  1.60436e+06 Fmax= 1.32146e+05, atom= 63544
+Step=    2, Dmax= 1.2e-03 nm, Epot=  1.59594e+06 Fmax= 1.16721e+05, atom= 63544
+Step=    3, Dmax= 1.4e-03 nm, Epot=  1.58514e+06 Fmax= 1.00689e+05, atom= 63544
+Step=    4, Dmax= 1.7e-03 nm, Epot=  1.57088e+06 Fmax= 8.42904e+04, atom= 63544
+Step=    5, Dmax= 2.1e-03 nm, Epot=  1.55146e+06 Fmax= 6.79384e+04, atom= 63544
+Step=    6, Dmax= 2.5e-03 nm, Epot=  1.52411e+06 Fmax= 5.20037e+04, atom= 63544
+Step=    7, Dmax= 3.0e-03 nm, Epot=  1.48385e+06 Fmax= 3.68332e+04, atom= 63544
+Step=    8, Dmax= 3.6e-03 nm, Epot=  1.42085e+06 Fmax= 2.26845e+04, atom= 63544
+Step=    9, Dmax= 4.3e-03 nm, Epot=  1.31137e+06 Fmax= 1.34549e+04, atom= 12280
+Step=   10, Dmax= 5.2e-03 nm, Epot=  1.12746e+06 Fmax= 7.55190e+03, atom= 50026
+Step=   11, Dmax= 6.2e-03 nm, Epot=  8.40715e+05 Fmax= 4.93115e+03, atom= 63542
+Step=   12, Dmax= 7.4e-03 nm, Epot=  5.21495e+05 Fmax= 3.85560e+03, atom= 37039
+Step=   13, Dmax= 8.9e-03 nm, Epot=  2.54835e+05 Fmax= 3.18811e+03, atom= 47556
+Step=   14, Dmax= 1.1e-02 nm, Epot=  3.64161e+04 Fmax= 4.39623e+03, atom= 20800
+Step=   15, Dmax= 1.3e-02 nm, Epot= -8.32310e+04 Fmax= 8.01066e+03, atom= 63544
+Step=   16, Dmax= 1.5e-02 nm, Epot= -1.44005e+05 Fmax= 4.30734e+03, atom= 63544
+Step=   17, Dmax= 1.8e-02 nm, Epot= -2.54798e+05 Fmax= 1.31145e+04, atom= 63544
+Step=   18, Dmax= 2.2e-02 nm, Epot= -2.88815e+05 Fmax= 5.36421e+03, atom= 62569
+Step=   19, Dmax= 2.7e-02 nm, Epot= -3.74035e+05 Fmax= 1.61506e+04, atom= 15001
+Step=   20, Dmax= 3.2e-02 nm, Epot= -4.01377e+05 Fmax= 9.42414e+03, atom= 62569
+Step=   21, Dmax= 3.8e-02 nm, Epot= -4.50609e+05 Fmax= 1.39238e+04, atom= 15001
+Step=   22, Dmax= 4.6e-02 nm, Epot= -4.84448e+05 Fmax= 2.51080e+04, atom= 62569
+Step=   23, Dmax= 5.5e-02 nm, Epot= -5.04646e+05 Fmax= 9.50331e+03, atom= 62569
+
+step 24: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   24, Dmax= 6.6e-02 nm, Epot=          inf Fmax= 2.51080e+04, atom= 62569Step=   25, Dmax= 3.3e-02 nm, Epot= -5.33764e+05 Fmax= 1.02745e+03, atom= 6417
+Step=   26, Dmax= 4.0e-02 nm, Epot= -7.33287e+05 Fmax= 3.55321e+03, atom= 15004
+Step=   27, Dmax= 4.8e-02 nm, Epot= -7.69195e+05 Fmax= 7.70153e+03, atom= 15004
+
+step 28: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   28, Dmax= 5.7e-02 nm, Epot=          inf Fmax= 3.55321e+03, atom= 15004Step=   29, Dmax= 2.9e-02 nm, Epot= -7.78371e+05 Fmax= 1.16256e+03, atom= 15004
+Step=   30, Dmax= 3.4e-02 nm, Epot= -8.29301e+05 Fmax= 4.98166e+03, atom= 13423
+Step=   31, Dmax= 4.1e-02 nm, Epot= -8.44430e+05 Fmax= 2.14201e+03, atom= 13423
+Step=   32, Dmax= 4.9e-02 nm, Epot= -8.72120e+05 Fmax= 1.07585e+04, atom= 23743
+
+step 33: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   33, Dmax= 5.9e-02 nm, Epot=          inf Fmax= 2.14201e+03, atom= 13423Step=   34, Dmax= 3.0e-02 nm, Epot= -8.77364e+05 Fmax= 2.34262e+03, atom= 19057
+Step=   35, Dmax= 3.6e-02 nm, Epot= -8.93855e+05 Fmax= 2.25181e+03, atom= 19057
+Step=   36, Dmax= 4.3e-02 nm, Epot= -9.09516e+05 Fmax= 8.55780e+03, atom= 13525
+Step=   37, Dmax= 5.1e-02 nm, Epot= -9.18657e+05 Fmax= 3.49452e+03, atom= 13525
+
+step 38: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   38, Dmax= 6.2e-02 nm, Epot=          inf Fmax= 8.55780e+03, atom= 13525Step=   39, Dmax= 3.1e-02 nm, Epot= -9.26654e+05 Fmax= 1.81979e+03, atom= 27409
+Step=   40, Dmax= 3.7e-02 nm, Epot= -9.41907e+05 Fmax= 3.86469e+03, atom= 49717
+Step=   41, Dmax= 4.4e-02 nm, Epot= -9.50823e+05 Fmax= 5.46633e+03, atom= 49717
+Step=   42, Dmax= 5.3e-02 nm, Epot= -9.57902e+05 Fmax= 7.75133e+03, atom= 19909
+
+step 43: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   43, Dmax= 6.4e-02 nm, Epot=          inf Fmax= 5.46633e+03, atom= 49717Step=   44, Dmax= 3.2e-02 nm, Epot= -9.61128e+05 Fmax= 1.21904e+03, atom= 19909
+Step=   45, Dmax= 3.8e-02 nm, Epot= -9.78479e+05 Fmax= 2.70951e+03, atom= 48661
+Step=   46, Dmax= 4.6e-02 nm, Epot= -9.88117e+05 Fmax= 7.95199e+03, atom= 34729
+Step=   47, Dmax= 5.5e-02 nm, Epot= -9.93715e+05 Fmax= 2.26434e+03, atom= 34729
+
+step 48: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   48, Dmax= 6.6e-02 nm, Epot=          inf Fmax= 7.95199e+03, atom= 34729Step=   49, Dmax= 3.3e-02 nm, Epot= -1.00131e+06 Fmax= 2.26688e+03, atom= 32160
+Step=   50, Dmax= 4.0e-02 nm, Epot= -1.00917e+06 Fmax= 1.56621e+03, atom= 32155
+Step=   51, Dmax= 4.8e-02 nm, Epot= -1.01631e+06 Fmax= 1.99237e+04, atom= 34729
+Step=   52, Dmax= 5.7e-02 nm, Epot= -1.02141e+06 Fmax= 1.96981e+03, atom= 13525
+
+step 53: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   53, Dmax= 6.9e-02 nm, Epot=          inf Fmax= 1.99237e+04, atom= 34729Step=   54, Dmax= 3.4e-02 nm, Epot= -1.02971e+06 Fmax= 3.54017e+03, atom= 6415
+Step=   55, Dmax= 4.1e-02 nm, Epot= -1.03643e+06 Fmax= 2.90880e+03, atom= 6415
+
+step 56: One or more water molecules can not be settled.
+Check for bad contacts and/or reduce the timestep if appropriate.
+Step=   56, Dmax= 4.9e-02 nm, Epot=          inf Fmax= 3.54017e+03, atom= 6415Step=   57, Dmax= 2.5e-02 nm, Epot= -1.04065e+06 Fmax= 4.86201e+02, atom= 67261
+
+writing lowest energy coordinates.
+
+Steepest Descents converged to Fmax < 750 in 58 steps
+Potential Energy  = -1.0406530e+06
+Maximum force     =  4.8620068e+02 on atom 67261
+Norm of force     =  8.1043101e+01
+
+GROMACS reminds you: "If you have any trouble sounding condescending, find a UNIX user to show you how it's done." (Scott Adams, Dilbert Cartoonist)
+

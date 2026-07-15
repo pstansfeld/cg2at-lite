@@ -1,0 +1,11 @@
+                     :-) GROMACS - gmx editconf, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/INPUT
+Command line:
+  gmx editconf -f 4QWP_CG.gro -resnr 0 -c -o /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/INPUT/CG_INPUT.pdb
+
+
+GROMACS reminds you: "What if you're wrong about the great Ju Ju at the bottom of the sea?" (Richard Dawkins)
+
