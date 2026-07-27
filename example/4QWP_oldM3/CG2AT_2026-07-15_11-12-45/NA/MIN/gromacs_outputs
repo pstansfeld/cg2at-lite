@@ -1,0 +1,30 @@
+                      :-) GROMACS - gmx mdrun, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/NA/MIN
+Command line:
+  gmx mdrun -ntmpi 1 -v -pin on -deffnm NA_merged_min -c ../NA_merged.pdb
+
+
+WARNING: An error occurred while sanity checking device #0. An unhandled error from a previous CUDA operation was detected. CUDA error #209 (cudaErrorNoKernelImageForDevice): no kernel image is available for execution on the device.
+
+Reading file NA_merged_min.tpr, VERSION 2023.5 (single precision)
+Using 1 MPI thread
+Using 24 OpenMP threads 
+
+
+Steepest Descents:
+   Tolerance (Fmax)   =  7.50000e+02
+   Number of steps    =        20000
+Step=    0, Dmax= 1.0e-03 nm, Epot= -5.10102e+03 Fmax= 3.72278e+02, atom= 3
+
+writing lowest energy coordinates.
+
+Steepest Descents converged to Fmax < 750 in 1 steps
+Potential Energy  = -5.1010195e+03
+Maximum force     =  3.7227838e+02 on atom 3
+Norm of force     =  1.5981524e+02
+
+GROMACS reminds you: "Count the Bubbles In Your Hair" (The Breeders)
+

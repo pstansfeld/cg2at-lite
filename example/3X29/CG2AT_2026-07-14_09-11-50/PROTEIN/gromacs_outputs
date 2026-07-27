@@ -1,0 +1,120 @@
+                     :-) GROMACS - gmx pdb2gmx, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/3X29/CG2AT_2026-07-14_09-11-50/PROTEIN
+Command line:
+  gmx pdb2gmx -f PROTEIN_de_novo_0.pdb -o PROTEIN_de_novo_0_gmx.pdb -water none -p PROTEIN_de_novo_0.top -i PROTEIN_0_posre.itp -ter
+
+Opening force field file ./charmm36-cg2at.ff/aminoacids.r2b
+Opening force field file ./charmm36-cg2at.ff/carb.r2b
+Opening force field file ./charmm36-cg2at.ff/cgenff.r2b
+Opening force field file ./charmm36-cg2at.ff/ethers.r2b
+Opening force field file ./charmm36-cg2at.ff/lipid.r2b
+Opening force field file ./charmm36-cg2at.ff/metals.r2b
+Opening force field file ./charmm36-cg2at.ff/na.r2b
+Opening force field file ./charmm36-cg2at.ff/silicates.r2b
+Opening force field file ./charmm36-cg2at.ff/solvent.r2b
+All occupancies are one
+Opening force field file ./charmm36-cg2at.ff/atomtypes.atp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.rtp
+Opening force field file ./charmm36-cg2at.ff/carb.rtp
+Opening force field file ./charmm36-cg2at.ff/cgenff.rtp
+Opening force field file ./charmm36-cg2at.ff/ethers.rtp
+Opening force field file ./charmm36-cg2at.ff/lipid.rtp
+Opening force field file ./charmm36-cg2at.ff/metals.rtp
+Opening force field file ./charmm36-cg2at.ff/na.rtp
+Opening force field file ./charmm36-cg2at.ff/silicates.rtp
+Opening force field file ./charmm36-cg2at.ff/solvent.rtp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.hdb
+Opening force field file ./charmm36-cg2at.ff/carb.hdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.hdb
+Opening force field file ./charmm36-cg2at.ff/ethers.hdb
+Opening force field file ./charmm36-cg2at.ff/lipid.hdb
+Opening force field file ./charmm36-cg2at.ff/metals.hdb
+Opening force field file ./charmm36-cg2at.ff/na.hdb
+Opening force field file ./charmm36-cg2at.ff/silicates.hdb
+Opening force field file ./charmm36-cg2at.ff/solvent.hdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.n.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.n.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.n.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.n.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.n.tdb
+Opening force field file ./charmm36-cg2at.ff/na.n.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.n.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.n.tdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.c.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.c.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.c.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.c.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.c.tdb
+Opening force field file ./charmm36-cg2at.ff/na.c.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.c.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.c.tdb
+Analysing hydrogen-bonding network for automated assignment of histidine
+ protonation. 255 donors and 246 acceptors were found.
+There are 569 hydrogen bonds
+Will use HISE for residue 75
+8 out of 8 lines of specbond.dat converted successfully
+Special Atom Distance matrix:
+                    MET0   MET51   CYS53   CYS63   HIS75   MET83   MET94
+                     SD5   SD385   SG398   SG466  NE2559   SD619   SD696
+   MET51   SD385   4.819
+   CYS53   SG398   4.863   0.758
+   CYS63   SG466   4.891   0.586   0.208
+   HIS75  NE2559   4.337   1.613   1.662   1.720
+   MET83   SD619   3.365   1.561   1.681   1.694   1.230
+   MET94   SD696   2.415   2.593   2.745   2.715   2.762   1.535
+  MET101   SD743   1.858   3.489   3.582   3.564   3.617   2.403   0.925
+  CYS103   SG759   1.969   3.776   3.805   3.796   3.973   2.762   1.316
+  CYS131   SG952   2.820   2.263   2.513   2.503   1.730   0.854   1.391
+  MET175  SD1290   2.133   2.916   2.928   2.977   2.215   1.364   1.459
+  CYS182  SG1338   1.275   3.629   3.753   3.765   3.151   2.164   1.437
+  CYS183  SG1344   0.876   4.028   4.029   4.069   3.510   2.549   1.795
+  CYS185  SG1357   0.527   4.621   4.688   4.701   4.318   3.251   2.105
+                  MET101  CYS103  CYS131  MET175  CYS182  CYS183
+                   SD743   SG759   SG952  SD1290  SG1338  SG1344
+  CYS103   SG759   0.488
+  CYS131   SG952   2.145   2.586
+  MET175  SD1290   1.884   2.237   1.013
+  CYS182  SG1338   1.390   1.770   1.553   1.064
+  CYS183  SG1344   1.504   1.713   2.094   1.297   0.719
+  CYS185  SG1357   1.425   1.509   2.744   2.156   1.239   0.965
+Linking CYS-53 SG-398 and CYS-63 SG-466...
+Opening force field file ./charmm36-cg2at.ff/aminoacids.arn
+Before cleaning: 7205 pairs
+Before cleaning: 7260 dihedrals
+
+GROMACS reminds you: "Why would I pay GitHub $100/year for an AI to tell me what code to write when men do it for free?" (Safia Abdalla)
+
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/3X29/CG2AT_2026-07-14_09-11-50/PROTEIN
+Command line:
+  gmx grompp -f em_PROTEIN.mdp -p topol_PROTEIN_de_novo_0.top -c PROTEIN_de_novo_0_gmx_checked.pdb -o MIN/PROTEIN_de_novo_0 -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 1 [file topol_PROTEIN_de_novo_0.top, line 12]:
+  System has non-zero total charge: 1.000000
+  Total charge should normally be an integer. See
+  https://manual.gromacs.org/current/user-guide/floating-point.html
+  for discussion on how close it should be to an integer.
+
+
+
+Number of degrees of freedom in T-Coupling group rest is 8199.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 2 [file em_PROTEIN.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There were 2 NOTEs
+
+GROMACS reminds you: "Every revolutionary idea seems to evoke three stages of reaction. They may be summed up by the phrases: (1) It's completely impossible. (2) It's possible, but not worth doing. (3) I said it was a good idea all along." (Arthur C. Clarke)
+

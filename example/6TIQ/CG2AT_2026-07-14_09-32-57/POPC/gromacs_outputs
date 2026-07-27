@@ -1,0 +1,22 @@
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/POPC
+Command line:
+  gmx grompp -po md_out-POPC -f em_POPC.mdp -p topol_POPC.top -c /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/POPC/POPC_all.pdb -o /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/6TIQ/CG2AT_2026-07-14_09-32-57/POPC/MIN/POPC_merged_min -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+Number of degrees of freedom in T-Coupling group rest is 109743.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 1 [file em_POPC.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There was 1 NOTE
+
+GROMACS reminds you: "And I Will Strike Down Upon Thee With Great Vengeance and With Furious Anger Those Who Attempt to Poison and Destroy My Brothers." (Pulp Fiction)
+

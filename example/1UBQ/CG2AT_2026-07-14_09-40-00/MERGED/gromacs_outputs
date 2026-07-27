@@ -1,0 +1,43 @@
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/MERGED
+Command line:
+  gmx grompp -po md_out-merged_cg2at -f em_merged_cg2at.mdp -p topol_final.top -r merged_cg2at_de_novo.pdb -c merged_cg2at_de_novo.pdb -o MIN/merged_cg2at_de_novo_minimised -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+Number of degrees of freedom in T-Coupling group rest is 94272.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 1 [file em_merged_cg2at.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There was 1 NOTE
+
+GROMACS reminds you: "Everything is theoretically impossible, until it is done." (Robert Heinlein)
+
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/MERGED
+Command line:
+  gmx grompp -po md_out-merged_cg2at_nvt -f nvt.mdp -p topol_final.top -r /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/MERGED/checked_ringed_lipid_de_novo.pdb -c /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/MERGED/checked_ringed_lipid_de_novo.pdb -o NVT/merged_cg2at_de_novo_nvt -maxwarn 2
+
+Generating 1-4 interactions: fudge = 1
+Number of degrees of freedom in T-Coupling group System is 93643.00
+
+NOTE 1 [file nvt.mdp]:
+  Removing center of mass motion in the presence of position restraints
+  might cause artifacts. When you are using position restraints to
+  equilibrate a macro-molecule, the artifacts are usually negligible.
+
+
+There was 1 NOTE
+
+GROMACS reminds you: "Always code as if the person who ends up maintaining your code is a violent psychopath who knows where you live." (Martin Golding)
+

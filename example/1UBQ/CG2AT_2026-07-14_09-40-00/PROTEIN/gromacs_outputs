@@ -1,0 +1,92 @@
+                     :-) GROMACS - gmx pdb2gmx, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/PROTEIN
+Command line:
+  gmx pdb2gmx -f PROTEIN_de_novo_0.pdb -o PROTEIN_de_novo_0_gmx.pdb -water none -p PROTEIN_de_novo_0.top -i PROTEIN_0_posre.itp -ter
+
+Opening force field file ./charmm36-cg2at.ff/aminoacids.r2b
+Opening force field file ./charmm36-cg2at.ff/carb.r2b
+Opening force field file ./charmm36-cg2at.ff/cgenff.r2b
+Opening force field file ./charmm36-cg2at.ff/ethers.r2b
+Opening force field file ./charmm36-cg2at.ff/lipid.r2b
+Opening force field file ./charmm36-cg2at.ff/metals.r2b
+Opening force field file ./charmm36-cg2at.ff/na.r2b
+Opening force field file ./charmm36-cg2at.ff/silicates.r2b
+Opening force field file ./charmm36-cg2at.ff/solvent.r2b
+All occupancies are one
+Opening force field file ./charmm36-cg2at.ff/atomtypes.atp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.rtp
+Opening force field file ./charmm36-cg2at.ff/carb.rtp
+Opening force field file ./charmm36-cg2at.ff/cgenff.rtp
+Opening force field file ./charmm36-cg2at.ff/ethers.rtp
+Opening force field file ./charmm36-cg2at.ff/lipid.rtp
+Opening force field file ./charmm36-cg2at.ff/metals.rtp
+Opening force field file ./charmm36-cg2at.ff/na.rtp
+Opening force field file ./charmm36-cg2at.ff/silicates.rtp
+Opening force field file ./charmm36-cg2at.ff/solvent.rtp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.hdb
+Opening force field file ./charmm36-cg2at.ff/carb.hdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.hdb
+Opening force field file ./charmm36-cg2at.ff/ethers.hdb
+Opening force field file ./charmm36-cg2at.ff/lipid.hdb
+Opening force field file ./charmm36-cg2at.ff/metals.hdb
+Opening force field file ./charmm36-cg2at.ff/na.hdb
+Opening force field file ./charmm36-cg2at.ff/silicates.hdb
+Opening force field file ./charmm36-cg2at.ff/solvent.hdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.n.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.n.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.n.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.n.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.n.tdb
+Opening force field file ./charmm36-cg2at.ff/na.n.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.n.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.n.tdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.c.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.c.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.c.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.c.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.c.tdb
+Opening force field file ./charmm36-cg2at.ff/na.c.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.c.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.c.tdb
+Analysing hydrogen-bonding network for automated assignment of histidine
+ protonation. 116 donors and 117 acceptors were found.
+There are 170 hydrogen bonds
+Will use HISE for residue 67
+8 out of 8 lines of specbond.dat converted successfully
+Special Atom Distance matrix:
+                    MET0
+                     SD5
+   HIS67  NE2537   2.454
+Opening force field file ./charmm36-cg2at.ff/aminoacids.arn
+
+Long Bond (582-583 = 0.250801 nm)
+Before cleaning: 3273 pairs
+Before cleaning: 3293 dihedrals
+
+GROMACS reminds you: "I'd Like Monday Mornings Better If They Started Later" (Garfield)
+
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/1UBQ/CG2AT_2026-07-14_09-40-00/PROTEIN
+Command line:
+  gmx grompp -f em_PROTEIN.mdp -p topol_PROTEIN_de_novo_0.top -c PROTEIN_de_novo_0_gmx_checked.pdb -o MIN/PROTEIN_de_novo_0 -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+Number of degrees of freedom in T-Coupling group rest is 3690.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 1 [file em_PROTEIN.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There was 1 NOTE
+
+GROMACS reminds you: "Chemical gases filling lungs of little ones" (Black Eyed Peas)
+

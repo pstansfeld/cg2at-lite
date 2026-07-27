@@ -1,0 +1,165 @@
+                     :-) GROMACS - gmx pdb2gmx, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/PROTEIN
+Command line:
+  gmx pdb2gmx -f PROTEIN_de_novo_0.pdb -o PROTEIN_de_novo_0_gmx.pdb -water none -p PROTEIN_de_novo_0.top -i PROTEIN_0_posre.itp -ter
+
+Opening force field file ./charmm36-cg2at.ff/aminoacids.r2b
+Opening force field file ./charmm36-cg2at.ff/carb.r2b
+Opening force field file ./charmm36-cg2at.ff/cgenff.r2b
+Opening force field file ./charmm36-cg2at.ff/ethers.r2b
+Opening force field file ./charmm36-cg2at.ff/lipid.r2b
+Opening force field file ./charmm36-cg2at.ff/metals.r2b
+Opening force field file ./charmm36-cg2at.ff/na.r2b
+Opening force field file ./charmm36-cg2at.ff/silicates.r2b
+Opening force field file ./charmm36-cg2at.ff/solvent.r2b
+All occupancies are one
+Opening force field file ./charmm36-cg2at.ff/atomtypes.atp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.rtp
+Opening force field file ./charmm36-cg2at.ff/carb.rtp
+Opening force field file ./charmm36-cg2at.ff/cgenff.rtp
+Opening force field file ./charmm36-cg2at.ff/ethers.rtp
+Opening force field file ./charmm36-cg2at.ff/lipid.rtp
+Opening force field file ./charmm36-cg2at.ff/metals.rtp
+Opening force field file ./charmm36-cg2at.ff/na.rtp
+Opening force field file ./charmm36-cg2at.ff/silicates.rtp
+Opening force field file ./charmm36-cg2at.ff/solvent.rtp
+Opening force field file ./charmm36-cg2at.ff/aminoacids.hdb
+Opening force field file ./charmm36-cg2at.ff/carb.hdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.hdb
+Opening force field file ./charmm36-cg2at.ff/ethers.hdb
+Opening force field file ./charmm36-cg2at.ff/lipid.hdb
+Opening force field file ./charmm36-cg2at.ff/metals.hdb
+Opening force field file ./charmm36-cg2at.ff/na.hdb
+Opening force field file ./charmm36-cg2at.ff/silicates.hdb
+Opening force field file ./charmm36-cg2at.ff/solvent.hdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.n.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.n.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.n.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.n.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.n.tdb
+Opening force field file ./charmm36-cg2at.ff/na.n.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.n.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.n.tdb
+Opening force field file ./charmm36-cg2at.ff/aminoacids.c.tdb
+Opening force field file ./charmm36-cg2at.ff/carb.c.tdb
+Opening force field file ./charmm36-cg2at.ff/cgenff.c.tdb
+Opening force field file ./charmm36-cg2at.ff/lipid.c.tdb
+Opening force field file ./charmm36-cg2at.ff/metals.c.tdb
+Opening force field file ./charmm36-cg2at.ff/na.c.tdb
+Opening force field file ./charmm36-cg2at.ff/silicates.c.tdb
+Opening force field file ./charmm36-cg2at.ff/solvent.c.tdb
+Analysing hydrogen-bonding network for automated assignment of histidine
+ protonation. 346 donors and 371 acceptors were found.
+There are 352 hydrogen bonds
+Will use HISE for residue 89
+Will use HISE for residue 149
+Will use HISE for residue 199
+8 out of 8 lines of specbond.dat converted successfully
+Special Atom Distance matrix:
+                   MET14   MET57   HIS89  HIS149  MET193
+                   SD104   SD421  NE2660 NE21119  SD1443
+   MET57   SD421   1.914
+   HIS89  NE2660   2.925   1.255
+  HIS149 NE21119   2.068   2.056   2.620
+  MET193  SD1443   2.048   2.150   2.570   0.512
+  HIS199 NE21494   1.943   1.600   2.151   0.482   0.679
+Opening force field file ./charmm36-cg2at.ff/aminoacids.arn
+
+Long Bond (93-94 = 0.268606 nm)
+
+Long Bond (297-290 = 0.264655 nm)
+
+Long Bond (570-572 = 0.270042 nm)
+
+Long Bond (686-688 = 0.255944 nm)
+
+Long Bond (728-721 = 0.262451 nm)
+
+Long Bond (764-766 = 0.254979 nm)
+
+Long Bond (983-984 = 0.277041 nm)
+
+Long Bond (1022-1024 = 0.255678 nm)
+
+Long Bond (1123-1124 = 0.258085 nm)
+
+Long Bond (1363-1356 = 0.257427 nm)
+
+Long Bond (1490-1492 = 0.273731 nm)
+
+Long Bond (1546-1539 = 0.264151 nm)
+
+Long Bond (1761-1754 = 0.259995 nm)
+
+Long Bond (1883-1885 = 0.252532 nm)
+
+Long Bond (1921-1923 = 0.262364 nm)
+
+Long Bond (2001-1994 = 0.273588 nm)
+
+Long Bond (2166-2167 = 0.277636 nm)
+
+Long Bond (2275-2268 = 0.263437 nm)
+
+Long Bond (2440-2442 = 0.262575 nm)
+
+Long Bond (2446-2448 = 0.276238 nm)
+
+Long Bond (2647-2640 = 0.260736 nm)
+
+Long Bond (2667-2660 = 0.252247 nm)
+
+Long Bond (2822-2824 = 0.280836 nm)
+
+Long Bond (2843-2845 = 0.265099 nm)
+
+Long Bond (2839-2840 = 0.250543 nm)
+
+Long Bond (3077-3070 = 0.254768 nm)
+
+Long Bond (3168-3161 = 0.261855 nm)
+
+Long Bond (3242-3244 = 0.273708 nm)
+
+Long Bond (3244-3245 = 0.252947 nm)
+
+Long Bond (3413-3406 = 0.254734 nm)
+Before cleaning: 9107 pairs
+Before cleaning: 9187 dihedrals
+
+GROMACS reminds you: "Let's Go Hang Out In a Mall" (LIVE)
+
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/PROTEIN
+Command line:
+  gmx grompp -f em_PROTEIN.mdp -p topol_PROTEIN_de_novo_0.top -c PROTEIN_de_novo_0_gmx_checked.pdb -o MIN/PROTEIN_de_novo_0 -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 1 [file topol_PROTEIN_de_novo_0.top, line 12]:
+  System has non-zero total charge: -22.000000
+  Total charge should normally be an integer. See
+  https://manual.gromacs.org/current/user-guide/floating-point.html
+  for discussion on how close it should be to an integer.
+
+
+
+Number of degrees of freedom in T-Coupling group rest is 10386.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 2 [file em_PROTEIN.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There were 2 NOTEs
+
+GROMACS reminds you: "GROMACS First : Making MD Great Again" (Vedran Miletic)
+

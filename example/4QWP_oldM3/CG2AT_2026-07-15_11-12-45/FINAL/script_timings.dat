@@ -1,0 +1,14 @@
+
+----------------------------------------------------------------------------------------------------
+
+                      Job                               Time         
+                      ---                               ----         
+
+Initialisation:                                 0 hours  0 min  2 sec 
+Read in CG system:                              0 hours  0 min  0 sec 
+Build protein systems:                          0 hours  0 min  3 sec 
+Build non protein system:                       0 hours  0 min  5 sec 
+Merge and minimise de novo:                     0 hours  0 min  6 sec 
+NVT on de novo:                                 0 hours  0 min 22 sec 
+---------------------------------------------------------------------
+Total run time:                                 0 hours  0 min 38 sec 

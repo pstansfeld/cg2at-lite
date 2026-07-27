@@ -1,0 +1,31 @@
+                      :-) GROMACS - gmx grompp, 2023.5 (-:
+
+Executable:   /storage/chem/lfsmgr/SRG/GROMACS2/2023.5/bin/gmx
+Data prefix:  /storage/chem/lfsmgr/SRG/GROMACS2/2023.5
+Working dir:  /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/CL
+Command line:
+  gmx grompp -po md_out-CL -f em_CL.mdp -p topol_CL.top -c /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/CL/CL_all.pdb -o /storage/lfsmgr_grp/mzsrjr/cg2at-lite/example/4QWP_oldM3/CG2AT_2026-07-15_11-12-45/CL/MIN/CL_merged_min -maxwarn 1
+
+Generating 1-4 interactions: fudge = 1
+
+NOTE 1 [file topol_CL.top, line 11]:
+  System has non-zero total charge: -67.000000
+  Total charge should normally be an integer. See
+  https://manual.gromacs.org/current/user-guide/floating-point.html
+  for discussion on how close it should be to an integer.
+
+
+
+Number of degrees of freedom in T-Coupling group rest is 198.00
+The integrator does not provide a ensemble temperature, there is no system ensemble temperature
+
+NOTE 2 [file em_CL.mdp]:
+  You are using a plain Coulomb cut-off, which might produce artifacts.
+  You might want to consider using PME electrostatics.
+
+
+
+There were 2 NOTEs
+
+GROMACS reminds you: "Count the Bubbles In Your Hair" (The Breeders)
+
