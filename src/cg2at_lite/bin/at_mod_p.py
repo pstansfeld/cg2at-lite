@@ -661,9 +661,16 @@ def RMSD_align(coord_set_1, coord_set_2):
         ali.append( at_mod.rotate_atom(atom, center, xyz_rot_apply) )
     return np.array(ali)
 
-def Calculate_RMSD(C1, C2):
-    dist=np.sqrt((C1 - C2)**2)
-    return np.round(np.sqrt(np.mean(dist**2)),3) #### RMSD calculation
+###non-standard RMSD calculation
+#def Calculate_RMSD(C1, C2):
+#    dist=np.sqrt((C1 - C2)**2)
+#    return np.round(np.sqrt(np.mean(dist**2)),3) #### RMSD calculation
+
+#### Standard RMSD calculation (per atom, not per coordinate so divides by N (atoms/residues), not 3N)
+#### RMSD = sqrt( (1/N) * sum_i[(dx_i)^2 + (dy_i)^2 + (dz_i)^2] )
+def Calculate_RMSD(C1, C2):                                       
+    return np.round(np.sqrt(np.mean(np.sum((C1 - C2)**2, axis=1))), 3)    
+
 
 def get_coordinates(input_coord, P_R, chain):
     coord_dict = {}

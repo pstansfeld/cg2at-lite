@@ -52,11 +52,18 @@ Flags
 
     GROMACS options:
       --gmx         GROMACS executable (default: auto-detect from log)
-      --nsteps-nvt  NVT steps (default: 10000 = 10 ps at 1 fs)
-      --temp        Temperature in K (default: 310)
+      --nsteps-nvt  NVT steps (default: 50000 = 100 ps at 2 fs)
+      --temp        Temperature in K (default: 300)
       --no-nvt      Skip NVT — only run minimisation
       --ntmpi       MPI threads for mdrun (default: 1)
       --ntomp       OpenMP threads for mdrun (default: 4)
+
+    Input options:
+      --aa-input    AA structure for restraint template and GROMACS input.
+                    'de_novo'  : use final_cg2at_de_novo.pdb  (default)
+                    'aligned'  : use final_cg2at_aligned.pdb
+                    Use 'aligned' when an experimental or AF3 reference
+                    was provided via cg2at-lite -a flag.
 
     Output options:
       --keep-tmp    Keep intermediate GROMACS files in FINAL/
@@ -97,7 +104,7 @@ Notes
 
     Falls back to analytical boundaries if files are not found.
 
-Developer : Hafez Razmazma
+Author : Hafez Razmazma
 Contact: hafez.razmazma@warwick.ac.uk
 """
 
@@ -213,64 +220,55 @@ class StepTimer:
 
     def __init__(self):
         self._start  = time.time()
-        self._steps  = []          # list of (label, elapsed_seconds)
-        self._t_step = time.time() # start of current step
+        self._steps  = []
+        self._t_step = time.time()
 
     def tick(self, label):
-        """Record elapsed time since last tick() call."""
         elapsed = time.time() - self._t_step
         self._steps.append((label, elapsed))
         self._t_step = time.time()
-        return elapsed
 
     def total(self):
         return time.time() - self._start
 
-    @staticmethod
-    def _fmt(seconds):
+    def _fmt(self, seconds):
         h = int(seconds // 3600)
         m = int((seconds % 3600) // 60)
         s = int(seconds % 60)
         return f"{h} hours {m:2d} min {s:2d} sec"
 
-    def summary_lines(self):
-        w = 100
+    def report(self):
+        W   = 100
+        sep = '-' * W
         lines = [
-            '\n' + '-' * w + '\n',
-            f"\n{'Job':<50} {'Time':>30}\n",
-            f"{'---':<50} {'----':>30}\n\n",
+            sep, '',
+            f"{'Job':<50} {'Time':>30}",
+            f"{'---':<50} {'----':>30}", '',
         ]
         for label, elapsed in self._steps:
-            lines.append(f"{label + ':':<50} {self._fmt(elapsed):>30}\n")
-        lines.append(f"\n{'-' * w}\n")
-        lines.append(f"{'Total run time:':<50} {self._fmt(self.total()):>30}\n")
-        lines.append('-' * w + '\n')
-        return lines
+            lines.append(f"  {label:<48} {self._fmt(elapsed):>30}")
+        lines += [
+            sep,
+            f"  {'Total run time:':<48} {self._fmt(self.total()):>30}",
+            sep, '',
+        ]
+        return '\n'.join(lines)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Logging — tee to terminal + log file
-# Verbose output goes to log only; key milestones go to terminal too.
 # ══════════════════════════════════════════════════════════════════════════════
 
 class Tee:
-    """
-    Write to both terminal and log file simultaneously.
-    Use log_only() for verbose lines that should NOT appear on terminal.
-    """
     def __init__(self, log_path):
         self._terminal = sys.stdout
         self._log      = open(log_path, 'w')
+        self._log_only = False
 
     def write(self, msg):
-        """Write to both terminal and log."""
-        self._terminal.write(msg)
+        if not self._log_only:
+            self._terminal.write(msg)
         self._log.write(msg)
-
-    def log_only(self, msg):
-        """Write to log file only — keeps terminal clean."""
-        self._log.write(msg)
-        self._log.flush()
 
     def flush(self):
         self._terminal.flush()
@@ -279,13 +277,15 @@ class Tee:
     def close(self):
         self._log.close()
 
+    def set_log_only(self, flag):
+        self._log_only = flag
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 1.  AUTO-DETECT GROMACS
 # ══════════════════════════════════════════════════════════════════════════════
 
 def find_gromacs_executable(cg2at_folder):
-    """Auto-detect GROMACS executable from cg2at-lite log files."""
     for root, dirs, files in os.walk(cg2at_folder):
         for fname in ['gromacs_outputs', 'gromacs_output']:
             fpath = os.path.join(root, fname)
@@ -299,11 +299,9 @@ def find_gromacs_executable(cg2at_folder):
                                     return gmx
                 except Exception:
                     pass
-
     for candidate in ['gmx', 'gmx_mpi', '/usr/bin/gmx']:
         if shutil.which(candidate):
             return candidate
-
     return 'gmx'
 
 
@@ -312,15 +310,12 @@ def find_gromacs_executable(cg2at_folder):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def find_cg2at_outputs(cg2at_folder):
-    """Locate key files inside a CG2AT output folder."""
     cg2at_folder = Path(cg2at_folder).resolve()
-
     if not cg2at_folder.exists():
         sys.exit(f"ERROR: CG2AT folder not found: {cg2at_folder}")
 
     final_dir  = cg2at_folder / 'FINAL'
     merged_dir = cg2at_folder / 'MERGED'
-
     if not final_dir.exists():
         sys.exit(f"ERROR: FINAL/ subfolder not found in {cg2at_folder}")
 
@@ -348,6 +343,10 @@ def find_cg2at_outputs(cg2at_folder):
     aligned = final_dir / 'final_cg2at_aligned.pdb'
     outputs['aligned_pdb'] = str(aligned) if aligned.exists() else None
 
+    # Auto-detect CG reference: CG2AT_*/INPUT/CG_INPUT.pdb
+    cg_input = cg2at_folder / 'INPUT' / 'CG_INPUT.pdb'
+    outputs['cg_input_pdb'] = str(cg_input) if cg_input.exists() else None
+
     return outputs
 
 
@@ -356,7 +355,6 @@ def find_cg2at_outputs(cg2at_folder):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def parse_time_range(tpr_file, xtc_file, b_ps, e_ps, step):
-    """Convert start/end times (ps) to frame indices for MDAnalysis slicing."""
     u     = mda.Universe(tpr_file, xtc_file)
     times = np.array([ts.time for ts in u.trajectory])
     start = 0 if b_ps <= 0 else min(np.searchsorted(times, b_ps), len(times) - 1)
@@ -369,9 +367,7 @@ def parse_time_range(tpr_file, xtc_file, b_ps, e_ps, step):
 # 4.  INLINE PHI/PSI EXTRACTION (fallback)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _extract_phi_psi_inline(tpr_file, xtc_file, start=0, stop=None, step=1,
-                             tee=None):
-    """Inline phi/psi extraction — used when traj_dih_guide.py is not available."""
+def _extract_phi_psi_inline(tpr_file, xtc_file, start=0, stop=None, step=1):
     u        = mda.Universe(tpr_file, xtc_file)
     protein  = u.select_atoms("protein")
     residues = protein.residues
@@ -383,8 +379,8 @@ def _extract_phi_psi_inline(tpr_file, xtc_file, start=0, stop=None, step=1,
     }
 
     n_proc = len(u.trajectory[start:stop:step])
-    print(f"  Found {n_res} residues | {len(u.trajectory)} total frames")
-    print(f"  Using every {step} frame(s) → processing {n_proc} frames")
+    print(f"Found {n_res} residues | {len(u.trajectory)} total frames")
+    print(f"Using every {step} frame(s) → processing {n_proc} frames")
 
     frame_count = 0
     for ts in u.trajectory[start:stop:step]:
@@ -402,7 +398,6 @@ def _extract_phi_psi_inline(tpr_file, xtc_file, start=0, stop=None, step=1,
                     distributions[res.resid]['phi'].append(np.degrees(phi))
                 except Exception:
                     pass
-
             if i < n_res - 1:
                 nxt = residues[i + 1]
                 try:
@@ -416,21 +411,15 @@ def _extract_phi_psi_inline(tpr_file, xtc_file, start=0, stop=None, step=1,
                     distributions[res.resid]['psi'].append(np.degrees(psi))
                 except Exception:
                     pass
-
         frame_count += 1
-        # Frame progress goes to log only — keeps terminal clean
         if frame_count % 200 == 0:
-            msg = f"  Processed {frame_count}/{n_proc} frames ...\n"
-            if tee:
-                tee.log_only(msg)
-            else:
-                print(msg, end='')
+            print(f"  Processed {frame_count}/{n_proc} frames ...")
 
     for resid in distributions:
         distributions[resid]['phi'] = np.array(distributions[resid]['phi'])
         distributions[resid]['psi'] = np.array(distributions[resid]['psi'])
 
-    print(f"  Done — {frame_count} frames processed.")
+    print(f"Done — {frame_count} frames processed.\n")
     return distributions
 
 
@@ -439,7 +428,6 @@ def _extract_phi_psi_inline(tpr_file, xtc_file, start=0, stop=None, step=1,
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _compute_TDC_inline(distributions, min_samples=10):
-    """Inline TDC computation — used when traj_dih_guide.py is not available."""
     per_res_TDC    = {}
     per_res_weight = {}
 
@@ -481,9 +469,7 @@ def _compute_TDC_inline(distributions, min_samples=10):
 
 def _write_restraints_inline(distributions, per_res_TDC, aa_pdb, output_itp,
                               k_max=K_MAX, sigma=SIG_INFLECTION,
-                              tdc_low=TDC_LOW, dphi_fixed=None,
-                              min_samples=10):
-    """Inline restraint writer — used when traj_dih_guide.py is not available."""
+                              tdc_low=TDC_LOW, dphi_fixed=None, min_samples=10):
     u        = mda.Universe(aa_pdb)
     protein  = u.select_atoms("protein")
     residues = protein.residues
@@ -498,7 +484,6 @@ def _write_restraints_inline(distributions, per_res_TDC, aa_pdb, output_itp,
     ]
 
     n_written = 0
-
     for i, res in enumerate(residues):
         cg_resid = i + 1
         if cg_resid not in distributions:
@@ -512,37 +497,37 @@ def _write_restraints_inline(distributions, per_res_TDC, aa_pdb, output_itp,
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-
             if i > 0 and len(phi_arr) >= min_samples:
                 prev = residues[i - 1]
                 try:
-                    ai = prev.atoms.select_atoms("name C")[0].index  + 1
-                    aj = res.atoms.select_atoms("name N")[0].index   + 1
-                    ak = res.atoms.select_atoms("name CA")[0].index  + 1
-                    al = res.atoms.select_atoms("name C")[0].index   + 1
+                    ai = prev.atoms.select_atoms("name C")[0].index + 1
+                    aj = res.atoms.select_atoms("name N")[0].index  + 1
+                    ak = res.atoms.select_atoms("name CA")[0].index + 1
+                    al = res.atoms.select_atoms("name C")[0].index  + 1
                     phi_mean = ((np.degrees(circmean(np.radians(phi_arr)))+180)%360)-180
                     phi_std  = np.degrees(circstd(np.radians(phi_arr)))
                     k        = k_max * np.exp(-phi_std / sigma)
                     dphi     = float(dphi_fixed) if dphi_fixed is not None else \
                                float(np.clip(phi_std * DPHI_SCALE, DPHI_MIN, DPHI_MAX))
+                    lines.append(f'; PHI {res.resname}{res.resid}  mean={phi_mean:.1f}°\n')
                     lines.append(f'  {ai:<6} {aj:<6} {ak:<6} {al:<6}  1  '
                                  f'{phi_mean:>8.2f}  {dphi:>5.2f}  {k:>8.2f}\n')
                     n_written += 1
                 except Exception:
                     pass
-
             if i < n_res - 1 and len(psi_arr) >= min_samples:
                 nxt = residues[i + 1]
                 try:
-                    ai = res.atoms.select_atoms("name N")[0].index   + 1
-                    aj = res.atoms.select_atoms("name CA")[0].index  + 1
-                    ak = res.atoms.select_atoms("name C")[0].index   + 1
-                    al = nxt.atoms.select_atoms("name N")[0].index   + 1
+                    ai = res.atoms.select_atoms("name N")[0].index  + 1
+                    aj = res.atoms.select_atoms("name CA")[0].index + 1
+                    ak = res.atoms.select_atoms("name C")[0].index  + 1
+                    al = nxt.atoms.select_atoms("name N")[0].index  + 1
                     psi_mean = ((np.degrees(circmean(np.radians(psi_arr)))+180)%360)-180
                     psi_std  = np.degrees(circstd(np.radians(psi_arr)))
                     k        = k_max * np.exp(-psi_std / sigma)
                     dphi     = float(dphi_fixed) if dphi_fixed is not None else \
                                float(np.clip(psi_std * DPHI_SCALE, DPHI_MIN, DPHI_MAX))
+                    lines.append(f'; PSI {res.resname}{res.resid}  mean={psi_mean:.1f}°\n')
                     lines.append(f'  {ai:<6} {aj:<6} {ak:<6} {al:<6}  1  '
                                  f'{psi_mean:>8.2f}  {dphi:>5.2f}  {k:>8.2f}\n')
                     n_written += 1
@@ -552,7 +537,13 @@ def _write_restraints_inline(distributions, per_res_TDC, aa_pdb, output_itp,
     with open(output_itp, 'w') as f:
         f.writelines(lines)
 
+    data_lines = [l for l in lines if l.strip() and l[0] not in (';', '[')]
+    max_idx    = max(int(l.split()[3]) for l in data_lines) if data_lines else 0
+    n_atoms    = len(mda.Universe(aa_pdb).atoms)
     print(f"  Restraints written : {n_written}")
+    print(f"  Max atom index     : {max_idx}  (AA structure has {n_atoms} atoms)")
+    print(f"  Atom indices OK ✅" if max_idx <= n_atoms else
+          f"  WARNING: max atom index {max_idx} > {n_atoms} ❌")
     return n_written
 
 
@@ -561,7 +552,6 @@ def _write_restraints_inline(distributions, per_res_TDC, aa_pdb, output_itp,
 # ══════════════════════════════════════════════════════════════════════════════
 
 def gromacs_style_backup(filepath):
-    """Create a GROMACS-style numbered backup: file.ext → #file.ext.N#"""
     p = Path(filepath)
     n = 1
     while True:
@@ -577,7 +567,6 @@ def gromacs_style_backup(filepath):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def patch_protein_itp(protein_itp_path, itp_filename='dihedral_restraints.itp'):
-    """Add #include "dihedral_restraints.itp" to PROTEIN_0.itp."""
     with open(protein_itp_path, 'r') as f:
         content = f.read()
 
@@ -587,11 +576,13 @@ def patch_protein_itp(protein_itp_path, itp_filename='dihedral_restraints.itp'):
         return False
 
     backup = gromacs_style_backup(protein_itp_path)
-    print(f"  Backup → {Path(backup).name}")
+    print(f"  Backup → {backup}")
 
     with open(protein_itp_path, 'a') as f:
         f.write(f'\n; Trajectory dihedral restraints (cg2at_refine.py)\n')
+        f.write('#ifdef DIHEDRALPOSRES\n')
         f.write(f'{include_line}\n')
+        f.write('#endif\n')
 
     print(f"  Added to PROTEIN_0.itp: {include_line}")
     return True
@@ -601,8 +592,7 @@ def patch_protein_itp(protein_itp_path, itp_filename='dihedral_restraints.itp'):
 # 9.  MDP FILE WRITERS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def write_mdp_files(final_dir, nsteps_nvt=10000, temp=310):
-    """Write minimisation and NVT MDP files to FINAL directory."""
+def write_mdp_files(final_dir, nsteps_nvt=50000, temp=300):
     minim_mdp = os.path.join(final_dir, MDP_MINIM_NAME)
     nvt_mdp   = os.path.join(final_dir, MDP_NVT_NAME)
 
@@ -610,6 +600,7 @@ def write_mdp_files(final_dir, nsteps_nvt=10000, temp=310):
         f.write(textwrap.dedent(f"""\
             ; Steepest descent minimisation — dihedral restraints active via topology
             ; Generated by cg2at_refine.py
+            define        = -DDIHEDRALPOSRES
             integrator    = steep
             nsteps        = 100000
             emtol         = 10.0
@@ -626,11 +617,12 @@ def write_mdp_files(final_dir, nsteps_nvt=10000, temp=310):
             ; Short NVT MD — dihedral restraints active via topology
             ; Thermal energy at {temp} K allows backbone to rotate toward target φ/ψ
             ; Generated by cg2at_refine.py
+            define        = -DDIHEDRALPOSRES
             integrator    = md
             nsteps        = {nsteps_nvt}
             dt            = 0.001
             tcoupl        = V-rescale
-            tc-grps       = System ;Protein
+            tc-grps       = System
             tau-t         = 0.1
             ref-t         = {temp}
             constraints   = h-bonds
@@ -650,6 +642,7 @@ def write_mdp_files(final_dir, nsteps_nvt=10000, temp=310):
             nstxout-compressed = 1000
         """))
 
+    print(f"  MDP files written: {os.path.basename(minim_mdp)}, {os.path.basename(nvt_mdp)}")
     return minim_mdp, nvt_mdp
 
 
@@ -657,12 +650,10 @@ def write_mdp_files(final_dir, nsteps_nvt=10000, temp=310):
 # 10.  GROMACS PIPELINE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def run_gromacs_pipeline(gmx, final_dir, de_novo_pdb, topol_top,
+def run_gromacs_pipeline(gmx, final_dir, aa_input_pdb, topol_top,
                           minim_mdp, nvt_mdp,
                           skip_nvt=False, ntmpi=1, ntomp=4,
-                          out_prefix='final_cg2at_restrained',
-                          tee=None):
-    """Run GROMACS minimisation → NVT pipeline with dihedral restraints."""
+                          out_prefix='final_cg2at_restrained'):
     gmx_dir = os.path.join(final_dir, GROMACS_SUBDIR)
     os.makedirs(gmx_dir, exist_ok=True)
 
@@ -674,15 +665,13 @@ def run_gromacs_pipeline(gmx, final_dir, de_novo_pdb, topol_top,
         with open(log_path, 'w') as lf:
             lf.write(' '.join(cmd) + '\n\n')
             lf.write(result.stdout)
-        # GROMACS output goes to log only
-        if tee:
-            tee.log_only(f"\n--- {label} output ---\n{result.stdout}\n")
         if result.returncode != 0:
             print(f"\n  ERROR in {label}")
             print(f"  See log: {log_path}")
-            for line in result.stdout.splitlines()[-15:]:
+            for line in result.stdout.splitlines()[-20:]:
                 print(f"    {line}")
             sys.exit(1)
+        print(f"  {label} ✅")
 
     def rel(path):
         return os.path.relpath(path, final_dir)
@@ -693,53 +682,268 @@ def run_gromacs_pipeline(gmx, final_dir, de_novo_pdb, topol_top,
     nvt_gro   = os.path.join(gmx_dir, 'nvt_dih_res.gro')
     out_pdb   = os.path.join(final_dir, f'{out_prefix}.pdb')
 
-    run_cmd([gmx, 'grompp', '-f', rel(minim_mdp), '-c', rel(de_novo_pdb),
+    run_cmd([gmx, 'grompp', '-f', rel(minim_mdp), '-c', rel(aa_input_pdb),
              '-p', rel(topol_top), '-o', rel(minim_tpr), '-maxwarn', '5'],
-            'grompp_minim.log', 'grompp (minimisation)')
-    print("  Minimisation grompp ✅")
-
+            'grompp_minim.log', 'Minimisation grompp')
     run_cmd([gmx, 'mdrun', '-v', '-s', rel(minim_tpr),
              '-deffnm', rel(minim_gro).replace('.gro', ''),
              '-ntmpi', str(ntmpi), '-ntomp', str(ntomp)],
-            'mdrun_minim.log', 'mdrun (minimisation)')
-    print("  Minimisation mdrun  ✅")
+            'mdrun_minim.log', 'Minimisation mdrun ')
 
     input_for_editconf = minim_gro
 
     if not skip_nvt:
         run_cmd([gmx, 'grompp', '-f', rel(nvt_mdp), '-c', rel(minim_gro),
                  '-p', rel(topol_top), '-o', rel(nvt_tpr), '-maxwarn', '5'],
-                'grompp_nvt.log', 'grompp (NVT)')
-        print("  NVT grompp         ✅")
-
+                'grompp_nvt.log', 'NVT grompp        ')
         run_cmd([gmx, 'mdrun', '-v', '-s', rel(nvt_tpr),
                  '-deffnm', rel(nvt_gro).replace('.gro', ''),
                  '-ntmpi', str(ntmpi), '-ntomp', str(ntomp)],
-                'mdrun_nvt.log', 'mdrun (NVT)')
-        print("  NVT mdrun          ✅")
+                'mdrun_nvt.log', 'NVT mdrun         ')
         input_for_editconf = nvt_gro
 
     run_cmd([gmx, 'editconf', '-f', rel(input_for_editconf), '-o', rel(out_pdb)],
-            'editconf.log', 'editconf')
-    print("  editconf           ✅")
+            'editconf.log', 'editconf          ')
+
+    for fname in [MDP_MINIM_NAME, MDP_NVT_NAME, 'mdout.mdp']:
+        src = os.path.join(final_dir, fname)
+        dst = os.path.join(gmx_dir, fname)
+        if os.path.exists(src):
+            shutil.move(src, dst)
 
     return out_pdb
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 11.  TDC B-FACTOR PDB
+# 11.  BACKBONE RMSD — Kabsch alignment (matches cg2at-lite method)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 11.  BACKBONE RMSD  (cg2at-lite methodology, standard ÷N formula)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _detect_cg_backbone_type(cg_file):
+    """
+    Returns 'explicit' if CG file has CA beads (Martini 3 explicit backbone
+    N/CA/C/O), or 'bb' if it has BB beads (classic Martini 3 single bead).
+    """
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            u = mda.Universe(cg_file)
+        if len(u.select_atoms("name CA")) > 0:
+            return 'explicit'
+        if len(u.select_atoms("name BB")) > 0:
+            return 'bb'
+    except Exception:
+        pass
+    return 'explicit'   # safe default for nextgen Martini 3
+
+
+def _backbone_com_per_residue(pdb_file):
+    """
+    Mass-weighted COM of backbone heavy atoms (N, CA, C, O) per residue.
+    Matches cg2at-lite RMSD_measure_de_novo() exactly.
+    Returns (N,3) array in Å.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        u = mda.Universe(pdb_file)
+    protein = u.select_atoms("protein")
+    coords  = []
+    for res in protein.residues:
+        bb = res.atoms.select_atoms("name N CA C O")
+        if len(bb) == 0:
+            bb = res.atoms.select_atoms("name CA")
+        if len(bb) == 0:
+            continue
+        coords.append(bb.center_of_mass())
+    return np.array(coords)
+
+
+def _cg_backbone_positions(cg_file, bb_type):
+    """
+    Returns (N,3) array of CG backbone positions in Å.
+    explicit: CA bead positions
+    bb      : BB bead positions
+    MDAnalysis auto-converts nm→Å, so no manual scaling needed.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        u = mda.Universe(cg_file)
+    sel_name = "CA" if bb_type == 'explicit' else "BB"
+    beads    = u.select_atoms(f"name {sel_name}")
+    if len(beads) == 0:
+        # Fallback: try protein selection
+        beads = u.select_atoms(f"protein and name {sel_name}")
+    return beads.positions.copy()
+
+
+def _kabsch_rmsd(pos_mobile, pos_ref):
+    """
+    Standard backbone RMSD (÷N) after Kabsch optimal alignment.
+    Matches the corrected cg2at-lite Calculate_RMSD with sum over axis=1.
+    pos_mobile, pos_ref: (N,3) float arrays, already centred or not.
+    """
+    c1 = pos_mobile - pos_mobile.mean(axis=0)
+    c2 = pos_ref    - pos_ref.mean(axis=0)
+    H         = c1.T @ c2
+    U, S, Vt  = np.linalg.svd(H)
+    d         = np.linalg.det(Vt.T @ U.T)
+    D         = np.diag([1.0, 1.0, d])
+    R         = Vt.T @ D @ U.T
+    rotated   = c1 @ R.T
+    diff      = rotated - c2
+    # Standard RMSD: sum squared distances per atom, mean over N atoms
+    return float(np.round(np.sqrt(np.mean(np.sum(diff**2, axis=1))), 3))
+
+
+def calculate_rmsd_ca(pdb1, pdb2):
+    """
+    Pairwise Cα RMSD between two AA structures after Kabsch alignment.
+    Standard ÷N formula.
+    """
+    if not pdb1 or not pdb2:
+        return np.nan
+    if not os.path.exists(pdb1) or not os.path.exists(pdb2):
+        return np.nan
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            u1 = mda.Universe(pdb1)
+            u2 = mda.Universe(pdb2)
+        ca1 = u1.select_atoms("protein and name CA")
+        ca2 = u2.select_atoms("protein and name CA")
+        if len(ca1) == 0 or len(ca1) != len(ca2):
+            return np.nan
+        return _kabsch_rmsd(ca2.positions.copy(), ca1.positions.copy())
+    except Exception:
+        return np.nan
+
+
+def calculate_rmsd_vs_cg(aa_pdb, cg_file):
+    """
+    Backbone COM (N/CA/C/O, mass-weighted) RMSD of AA structure vs CG backbone.
+    Standard ÷N formula — directly comparable to corrected cg2at-lite output.
+    MDAnalysis reads GRO/PDB in Å automatically (no manual nm→Å conversion).
+    """
+    if not aa_pdb or not cg_file:
+        return np.nan
+    if not os.path.exists(aa_pdb) or not os.path.exists(cg_file):
+        return np.nan
+    try:
+        bb_type = _detect_cg_backbone_type(cg_file)
+        pos_aa  = _backbone_com_per_residue(aa_pdb)
+        pos_cg  = _cg_backbone_positions(cg_file, bb_type)
+        n = min(len(pos_aa), len(pos_cg))
+        if n == 0:
+            return np.nan
+        return _kabsch_rmsd(pos_aa[:n], pos_cg[:n])
+    except Exception:
+        return np.nan
+
+
+def print_rmsd_report(de_novo_pdb, aligned_pdb, restrained_pdb, cg_ref=None):
+    """
+    Print two-section backbone RMSD report.
+
+    Section 1 — Backbone COM vs CG reference (only when cg_ref is provided)
+    Section 2 — Pairwise Cα RMSD between De novo / Aligned / Restrained
+
+    Returns rmsd_data dict for write_quality_dat().
+    """
+    W = 100
+    print(f"\n{'─'*W}")
+    print("  Backbone RMSD report  (cg2at-lite methodology)")
+    print(f"{'─'*W}")
+
+    has_aligned = aligned_pdb and os.path.exists(aligned_pdb)
+
+    rmsd_data = {
+        'rmsd_dn_cg'  : np.nan,
+        'rmsd_al_cg'  : np.nan,
+        'rmsd_rest_cg': np.nan,
+        'rmsd_dn_rest': np.nan,
+        'rmsd_al_rest': np.nan,
+        'rmsd_dn_al'  : np.nan,
+    }
+
+    # ── Section 1: vs CG reference ────────────────────────────────────────────
+    if cg_ref and os.path.exists(cg_ref):
+        bb_type = _detect_cg_backbone_type(cg_ref)
+        bb_label = 'explicit backbone N/CA/C/O' if bb_type == 'explicit' else 'classic BB bead'
+        print(f"\n  CG reference : {os.path.basename(cg_ref)}  ({bb_label})")
+        print( "  AA method    : backbone COM (N/CA/C/O, mass-weighted) per residue")
+        print( "  Alignment    : Kabsch optimal rotation")
+
+        rmsd_data['rmsd_dn_cg']   = calculate_rmsd_vs_cg(de_novo_pdb,    cg_ref)
+        rmsd_data['rmsd_rest_cg'] = calculate_rmsd_vs_cg(restrained_pdb, cg_ref)
+        if has_aligned:
+            rmsd_data['rmsd_al_cg'] = calculate_rmsd_vs_cg(aligned_pdb,  cg_ref)
+
+        col_w = 18
+        print(f"\n  Backbone COM RMSD vs CG:\n")
+        hdr  = f"   {'chain':^7}  {'De novo (Å)':^{col_w}}"
+        sep2 = f"   {'-----':^7}  {'------------------':^{col_w}}"
+        if has_aligned:
+            hdr  += f"  {'Aligned (Å)':^{col_w}}"
+            sep2 += f"  {'------------------':^{col_w}}"
+        hdr  += f"  {'Restrained (Å)':^{col_w}}"
+        sep2 += f"  {'------------------':^{col_w}}"
+        print(hdr)
+        print(sep2)
+
+        row = f"   {'0':^7}  {rmsd_data['rmsd_dn_cg']:^{col_w}.3f}"
+        if has_aligned:
+            row += f"  {rmsd_data['rmsd_al_cg']:^{col_w}.3f}"
+        row += f"  {rmsd_data['rmsd_rest_cg']:^{col_w}.3f}"
+        print(row)
+    else:
+        if cg_ref:
+            print(f"\n  WARNING: CG reference not found: {cg_ref}")
+        else:
+            print("\n  No CG reference provided — skipping Section 1.")
+        print("  (Pass --cg-ref <file.gro> or place CG_INPUT.pdb in INPUT/ folder)")
+
+    # ── Section 2: pairwise Cα RMSD ───────────────────────────────────────────
+    print(f"\n  Pairwise Cα RMSD between converted structures:\n")
+
+    rmsd_data['rmsd_dn_rest'] = calculate_rmsd_ca(de_novo_pdb,   restrained_pdb)
+    if has_aligned:
+        rmsd_data['rmsd_dn_al']   = calculate_rmsd_ca(de_novo_pdb,  aligned_pdb)
+        rmsd_data['rmsd_al_rest'] = calculate_rmsd_ca(aligned_pdb, restrained_pdb)
+
+    col_w = 18
+    if has_aligned:
+        print(f"  {'':22}  {'De novo':^{col_w}}  {'Aligned':^{col_w}}  {'Restrained':^{col_w}}")
+        print(f"  {'De novo':22}  {'0.000':^{col_w}}  "
+              f"{rmsd_data['rmsd_dn_al']:^{col_w}.3f}  "
+              f"{rmsd_data['rmsd_dn_rest']:^{col_w}.3f}")
+        print(f"  {'Aligned':22}  {rmsd_data['rmsd_dn_al']:^{col_w}.3f}  "
+              f"{'0.000':^{col_w}}  "
+              f"{rmsd_data['rmsd_al_rest']:^{col_w}.3f}")
+        print(f"  {'Restrained':22}  {rmsd_data['rmsd_dn_rest']:^{col_w}.3f}  "
+              f"{rmsd_data['rmsd_al_rest']:^{col_w}.3f}  "
+              f"{'0.000':^{col_w}}")
+    else:
+        print(f"  {'':22}  {'De novo':^{col_w}}  {'Restrained':^{col_w}}")
+        print(f"  {'De novo':22}  {'0.000':^{col_w}}  "
+              f"{rmsd_data['rmsd_dn_rest']:^{col_w}.3f}")
+        print(f"  {'Restrained':22}  {rmsd_data['rmsd_dn_rest']:^{col_w}.3f}  "
+              f"{'0.000':^{col_w}}")
+
+    print(f"\n{'─'*W}")
+    return rmsd_data
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 12.  TDC B-FACTOR PDB
 # ══════════════════════════════════════════════════════════════════════════════
 
 def write_tdc_bfactor_pdb(restrained_pdb, per_res_TDC, output_pdb):
     """
     Write a copy of the restrained structure with TDC scores in B-factor column.
-    All atoms of a residue receive the residue TDC score.
-
-    Analogous to AlphaFold storing pLDDT in B-factors.
-
-    TDC > 70  HIGH    strong restraint applied  → well-defined backbone
-    TDC 40-70 MEDIUM  moderate restraint
-    TDC < 40  LOW     no restraint applied      → flexible / uncertain
+    Analogous to AlphaFold pLDDT B-factor colouring.
 
     Visualise in PyMOL:
         load final_cg2at_restrained_TDC.pdb
@@ -751,14 +955,13 @@ def write_tdc_bfactor_pdb(restrained_pdb, per_res_TDC, output_pdb):
         color scale method BWR
     """
     try:
-        u        = mda.Universe(restrained_pdb)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            u = mda.Universe(restrained_pdb)
         protein  = u.select_atoms("protein")
         residues = protein.residues
-
-        # Build sequential CG resid list (same order as restraint generation)
         cg_resids = sorted(per_res_TDC.keys())
 
-        # Map protein atom index → TDC score
         tdc_per_atom = {}
         for i, res in enumerate(residues):
             cg_resid = cg_resids[i] if i < len(cg_resids) else None
@@ -766,33 +969,23 @@ def write_tdc_bfactor_pdb(restrained_pdb, per_res_TDC, output_pdb):
             for atom in res.atoms:
                 tdc_per_atom[atom.index] = tdc
 
-        # PDB header with usage instructions
-        header_lines = [
+        lines_out = [
             'REMARK  TDC (Trajectory Dihedral Confidence) in B-factor column\n',
-            'REMARK  Analogous to pLDDT: 0 = low confidence, 100 = high confidence\n',
-            'REMARK\n',
-            'REMARK  TDC > 70  HIGH    strong dihedral restraint was applied\n',
-            'REMARK  TDC 40-70 MEDIUM  moderate restraint was applied\n',
-            'REMARK  TDC < 40  LOW     no restraint applied (flexible/uncertain)\n',
+            'REMARK  Analogous to pLDDT: 0=low confidence, 100=high confidence\n',
+            'REMARK  TDC > 70  HIGH    strong dihedral restraint applied\n',
+            'REMARK  TDC 40-70 MEDIUM  moderate restraint applied\n',
+            'REMARK  TDC < 40  LOW     no restraint applied\n',
             'REMARK\n',
             'REMARK  Visualise in PyMOL:\n',
             'REMARK    spectrum b, blue_white_red, minimum=0, maximum=100\n',
             'REMARK\n',
             'REMARK  Visualise in VMD:\n',
-            'REMARK    mol modcolor 0 0 Beta\n',
-            'REMARK    color scale method BWR\n',
-            'REMARK\n',
+            'REMARK    mol modcolor 0 0 Beta  |  color scale method BWR\n',
         ]
 
-        lines_out = list(header_lines)
-
-        # Read original PDB, replace B-factor column (cols 60-65, 0-indexed)
         with open(restrained_pdb, 'r') as f:
             atom_serial = 0
             for line in f:
-                if line.startswith('REMARK') or line.startswith('TITLE') \
-                        or line.startswith('CRYST') or line.startswith('MODEL'):
-                    continue  # skip original header — we wrote our own
                 if line.startswith('ATOM') or line.startswith('HETATM'):
                     try:
                         atom_idx = protein.atoms[atom_serial].index
@@ -808,49 +1001,35 @@ def write_tdc_bfactor_pdb(restrained_pdb, per_res_TDC, output_pdb):
         with open(output_pdb, 'w') as f:
             f.writelines(lines_out)
 
-        print(f"  TDC B-factor PDB   → {Path(output_pdb).name}")
-        return True
-
+        print(f"  TDC B-factor PDB   → {os.path.basename(output_pdb)}")
     except Exception as e:
-        print(f"  WARNING: could not write TDC B-factor PDB: {e}")
-        return False
+        print(f"  WARNING: could not write TDC PDB: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 12.  RAMACHANDRAN REFERENCE DATA
+# 13.  RAMACHANDRAN REFERENCE DATA
 # ══════════════════════════════════════════════════════════════════════════════
 
 _RAMA500_SETTINGS = {
     'general': {
-        'filename'   : 'rama500-general.data',
-        'levels'     : [0.0, 0.0005, 0.02],
-        'colors'     : ['#FFFFFF', '#B3E8FF', '#7FD9FF'],
-        'title'      : 'General',
+        'filename': 'rama500-general.data',
+        'levels'  : [0.0, 0.0005, 0.02],
+        'colors'  : ['#FFFFFF', '#B3E8FF', '#7FD9FF'],
     },
     'gly': {
-        'filename'   : 'rama500-gly-sym.data',
-        'levels'     : [0.0, 0.002, 0.02],
-        'colors'     : ['#FFFFFF', '#FFE8C5', '#FFCC7F'],
-        'title'      : 'Glycine',
+        'filename': 'rama500-gly-sym.data',
+        'levels'  : [0.0, 0.002, 0.02],
+        'colors'  : ['#FFFFFF', '#FFE8C5', '#FFCC7F'],
     },
     'pro': {
-        'filename'   : 'rama500-pro.data',
-        'levels'     : [0.0, 0.002, 0.02],
-        'colors'     : ['#FFFFFF', '#D0FFC5', '#7FFF8C'],
-        'title'      : 'Proline',
+        'filename': 'rama500-pro.data',
+        'levels'  : [0.0, 0.002, 0.02],
+        'colors'  : ['#FFFFFF', '#D0FFC5', '#7FFF8C'],
     },
 }
 
 
 def _find_rama500_dir():
-    """
-    Search for rama500 data files.
-    Priority:
-      1. rama_data/ next to this script
-      2. Parent directory / rama_data/   (e.g. src/cg2at_lite/rama_data/)
-      3. ~/.cg2at_refine/rama_data/
-      4. Current working directory / rama_data/
-    """
     script_dir = Path(__file__).resolve().parent
     candidates = [
         script_dir / 'rama_data',
@@ -865,11 +1044,9 @@ def _find_rama500_dir():
 
 
 def _load_rama500_file(filepath):
-    """Load a rama500-*.data file. Returns (Z, mid_points)."""
     mid_points = np.arange(-179, 180, 2, dtype=float)
     n = len(mid_points)
     Z = np.zeros((n, n), dtype=float)
-
     with open(filepath, 'r') as f:
         for line in f:
             line = line.strip()
@@ -888,16 +1065,13 @@ def _load_rama500_file(filepath):
                     Z[i_psi, i_phi] = value
             except (ValueError, IndexError):
                 continue
-
     return Z, mid_points
 
 
 def _load_mda_reference():
-    """Load MDAnalysis built-in Ramachandran reference. No internet needed."""
     try:
         import MDAnalysis.analysis.data as mda_data
         data_dir = Path(mda_data.__file__).parent
-
         for pattern in ['*.npy', '*.npz']:
             for fname in data_dir.rglob(pattern):
                 if 'rama' in fname.name.lower():
@@ -975,16 +1149,17 @@ def _classify_analytical_pro(phi, psi):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 13.  RAMACHANDRAN QUALITY ASSESSMENT
+# 14.  RAMACHANDRAN QUALITY ASSESSMENT
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _get_phi_psi_all(pdb_file):
-    u        = mda.Universe(pdb_file)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        u        = mda.Universe(pdb_file)
     protein  = u.select_atoms("protein")
     residues = protein.residues
     n_res    = len(residues)
     result   = []
-
     for i, res in enumerate(residues):
         if i == 0 or i == n_res - 1:
             continue
@@ -1005,7 +1180,6 @@ def _get_phi_psi_all(pdb_file):
             result.append((f"{res.resname}{res.resid}", phi, psi, res.resname))
         except Exception:
             pass
-
     return result
 
 
@@ -1030,7 +1204,6 @@ def assess_ramachandran(pdb_file, Z=None, phi_bins=None, psi_bins=None,
         return None
     all_res  = _get_phi_psi_all(pdb_file)
     favoured, allowed, outliers, gly_pro = [], [], [], []
-
     for label, phi, psi, resname in all_res:
         if resname in SPECIAL_RES:
             gly_pro.append((label, phi, psi, resname))
@@ -1042,14 +1215,12 @@ def assess_ramachandran(pdb_file, Z=None, phi_bins=None, psi_bins=None,
             region = _classify_mda(phi, psi, Z, phi_bins, psi_bins)
         else:
             region = _classify_analytical_general(phi, psi)
-
         if region == 'favoured':
             favoured.append((label, phi, psi))
         elif region == 'allowed':
             allowed.append((label, phi, psi))
         else:
             outliers.append((label, phi, psi))
-
     return _make_stats(favoured, allowed, outliers, gly_pro)
 
 
@@ -1058,7 +1229,6 @@ def assess_ramachandran_gly(pdb_file, rama500_gly=None):
         return None
     all_res  = _get_phi_psi_all(pdb_file)
     favoured, allowed, outliers = [], [], []
-
     for label, phi, psi, resname in all_res:
         if resname != 'GLY':
             continue
@@ -1067,14 +1237,12 @@ def assess_ramachandran_gly(pdb_file, rama500_gly=None):
             region = _classify_rama500(phi, psi, Z_g, mp_g, lv_g)
         else:
             region = _classify_analytical_gly(phi, psi)
-
         if region == 'favoured':
             favoured.append((label, phi, psi))
         elif region == 'allowed':
             allowed.append((label, phi, psi))
         else:
             outliers.append((label, phi, psi))
-
     return _make_stats(favoured, allowed, outliers)
 
 
@@ -1083,7 +1251,6 @@ def assess_ramachandran_pro(pdb_file, rama500_pro=None):
         return None
     all_res  = _get_phi_psi_all(pdb_file)
     favoured, allowed, outliers = [], [], []
-
     for label, phi, psi, resname in all_res:
         if resname != 'PRO':
             continue
@@ -1092,19 +1259,17 @@ def assess_ramachandran_pro(pdb_file, rama500_pro=None):
             region = _classify_rama500(phi, psi, Z_g, mp_g, lv_g)
         else:
             region = _classify_analytical_pro(phi, psi)
-
         if region == 'favoured':
             favoured.append((label, phi, psi))
         elif region == 'allowed':
             allowed.append((label, phi, psi))
         else:
             outliers.append((label, phi, psi))
-
     return _make_stats(favoured, allowed, outliers)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 14.  PRINT / WRITE QUALITY SUMMARIES
+# 15.  PRINT / WRITE QUALITY SUMMARIES
 # ══════════════════════════════════════════════════════════════════════════════
 
 def print_rama_summary(label, stats):
@@ -1130,7 +1295,13 @@ def print_rama_summary(label, stats):
 
 def write_quality_dat(output_path, stats_dn, stats_rest, stats_al=None,
                        stats_gly_dn=None, stats_gly_rest=None, stats_gly_al=None,
-                       stats_pro_dn=None, stats_pro_rest=None, stats_pro_al=None):
+                       stats_pro_dn=None, stats_pro_rest=None, stats_pro_al=None,
+                       rmsd_data=None):
+    """
+    Write structure_quality_restrained.dat.
+    Includes Ramachandran statistics (General, GLY, PRO) and
+    backbone RMSD report matching cg2at-lite format.
+    """
     has_al = stats_al is not None
 
     def make_table(s_dn, s_rest, s_al):
@@ -1166,33 +1337,60 @@ def write_quality_dat(output_path, stats_dn, stats_rest, stats_al=None,
                          f'{", ".join(o[0] for o in s_al["outliers"]) or "none"}\n')
         return lines
 
+    sep_line = f'\n{"─"*60}\n'
     all_lines = [
         'Structure quality assessment — cg2at_refine.py (TDC method)\n',
         f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n',
     ]
 
-    sep = f'\n{"─"*60}\n'
-    all_lines += [sep, 'GENERAL RESIDUES (non-GLY, non-PRO)\n', sep]
+    # ── Ramachandran sections ─────────────────────────────────────────────────
+    all_lines += [sep_line, 'GENERAL RESIDUES (non-GLY, non-PRO)\n', sep_line]
     all_lines += make_table(stats_dn, stats_rest, stats_al if has_al else None)
     if stats_dn:
-        all_lines.append(f'\n  GLY/PRO excluded: {stats_dn.get("n_gly_pro",0)} residues\n')
+        all_lines.append(f'\n  GLY/PRO excluded: '
+                         f'{stats_dn.get("n_gly_pro", 0)} residues\n')
 
     if stats_gly_dn is not None:
-        all_lines += [sep, 'GLYCINE\n', sep]
+        all_lines += [sep_line, 'GLYCINE\n', sep_line]
         all_lines += make_table(stats_gly_dn, stats_gly_rest,
                                  stats_gly_al if has_al else None)
 
     if stats_pro_dn is not None:
-        all_lines += [sep, 'PROLINE\n', sep]
+        all_lines += [sep_line, 'PROLINE\n', sep_line]
         all_lines += make_table(stats_pro_dn, stats_pro_rest,
                                  stats_pro_al if has_al else None)
 
+    # ── RMSD section ─────────────────────────────────────────────────────────
+    if rmsd_data:
+        has_cg  = not np.isnan(rmsd_data.get('rmsd_dn_cg',   np.nan))
+        has_al  = not np.isnan(rmsd_data.get('rmsd_dn_al',   np.nan))
+        has_alr = not np.isnan(rmsd_data.get('rmsd_al_rest', np.nan))
+
+        all_lines += [sep_line, 'BACKBONE RMSD (standard ÷N formula, Kabsch alignment)\n', sep_line]
+        all_lines.append(f'{"Metric":<42} {"Value (Å)":>10}\n')
+        all_lines.append(f'{"─"*42} {"─"*10}\n')
+
+        if has_cg:
+            all_lines.append(f'{"Backbone COM RMSD: De novo vs CG":<42} {rmsd_data["rmsd_dn_cg"]:>10.3f}\n')
+            all_lines.append(f'{"Backbone COM RMSD: Restrained vs CG":<42} {rmsd_data["rmsd_rest_cg"]:>10.3f}\n')
+            if has_al:
+                all_lines.append(f'{"Backbone COM RMSD: Aligned vs CG":<42} {rmsd_data["rmsd_al_cg"]:>10.3f}\n')
+            all_lines.append('\n')
+
+        all_lines.append(f'{"Cα RMSD: De novo vs Restrained":<42} {rmsd_data["rmsd_dn_rest"]:>10.3f}\n')
+        if has_al:
+            all_lines.append(f'{"Cα RMSD: De novo vs Aligned":<42} {rmsd_data["rmsd_dn_al"]:>10.3f}\n')
+        if has_alr:
+            all_lines.append(f'{"Cα RMSD: Aligned vs Restrained":<42} {rmsd_data["rmsd_al_rest"]:>10.3f}\n')
+
+        all_lines.append('\nNote: standard RMSD (÷N, one value per residue/atom).\n'
+                         '      Kabsch optimal rotation applied before RMSD.\n')
     with open(output_path, 'w') as f:
         f.writelines(all_lines)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 15.  SHARED PLOT HELPERS
+# 16.  SHARED PLOT HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _style_ax(ax, title, is_first_col=False, row_label=None):
@@ -1216,11 +1414,9 @@ def _add_stats_table(ax, stats):
     if stats is None:
         return
     table = ax.table(
-        cellText=[[
-            f"{stats['pct_fav']:.1f}%",
-            f"{stats['pct_all']:.1f}%",
-            f"{stats['pct_out']:.1f}%",
-        ]],
+        cellText=[[f"{stats['pct_fav']:.1f}%",
+                   f"{stats['pct_all']:.1f}%",
+                   f"{stats['pct_out']:.1f}%"]],
         colLabels=['Favoured', 'Allowed', 'Outlier'],
         cellLoc='center', colLoc='center',
         bbox=[0.10, -0.26, 0.80, 0.11],
@@ -1253,12 +1449,11 @@ def _scatter_classified(ax, favoured, allowed, outliers):
     if outliers:
         ax.scatter([p for _, p, _ in outliers], [s for _, _, s in outliers],
                    c=COLOR_OUT, s=DOT_SIZE + 10,
-                   alpha=DOT_ALPHA, zorder=6,
-                   edgecolors='white', linewidths=0.5)
+                   alpha=DOT_ALPHA, zorder=6, edgecolors='white', linewidths=0.5)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 16.  RAMACHANDRAN PLOT — GENERAL
+# 17.  RAMACHANDRAN PLOT — GENERAL
 # ══════════════════════════════════════════════════════════════════════════════
 
 def plot_ramachandran(de_novo_pdb, restrained_pdb, aligned_pdb, output_png,
@@ -1284,7 +1479,6 @@ def plot_ramachandran(de_novo_pdb, restrained_pdb, aligned_pdb, output_png,
 
     for col_idx, (ax, (pdb, title)) in enumerate(zip(axes, pdbs)):
         is_first = (col_idx == 0)
-
         if not os.path.exists(pdb):
             ax.set_title(f'{title}\n(not found)', fontsize=PLOT_TITLE_FONTSIZE)
             continue
@@ -1322,7 +1516,6 @@ def plot_ramachandran(de_novo_pdb, restrained_pdb, aligned_pdb, output_png,
                 region = _classify_mda(phi, psi, Z, phi_bins, psi_bins)
             else:
                 region = _classify_analytical_general(phi, psi)
-
             if region == 'favoured':
                 favoured.append((label, phi, psi))
             elif region == 'allowed':
@@ -1335,9 +1528,9 @@ def plot_ramachandran(de_novo_pdb, restrained_pdb, aligned_pdb, output_png,
 
         total = len(favoured) + len(allowed) + len(outliers)
         _add_stats_table(ax, {
-            'pct_fav' : 100.0 * len(favoured) / total if total > 0 else 0.0,
-            'pct_all' : 100.0 * len(allowed)  / total if total > 0 else 0.0,
-            'pct_out' : 100.0 * len(outliers) / total if total > 0 else 0.0,
+            'pct_fav': 100.0 * len(favoured) / total if total > 0 else 0.0,
+            'pct_all': 100.0 * len(allowed)  / total if total > 0 else 0.0,
+            'pct_out': 100.0 * len(outliers) / total if total > 0 else 0.0,
             'favoured': favoured, 'allowed': allowed, 'outliers': outliers,
         })
 
@@ -1350,11 +1543,11 @@ def plot_ramachandran(de_novo_pdb, restrained_pdb, aligned_pdb, output_png,
     plt.tight_layout(rect=[0, 0.06, 1, 1.0])
     plt.savefig(output_png, dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print(f"  General Ramachandran    → {Path(output_png).name}")
+    print(f"  General Ramachandran → {os.path.basename(output_png)}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 17.  RAMACHANDRAN PLOT — GLY / PRO
+# 18.  RAMACHANDRAN PLOT — GLY / PRO
 # ══════════════════════════════════════════════════════════════════════════════
 
 def plot_ramachandran_gly_pro(de_novo_pdb, restrained_pdb, aligned_pdb,
@@ -1406,10 +1599,9 @@ def plot_ramachandran_gly_pro(de_novo_pdb, restrained_pdb, aligned_pdb,
                 Z_r, mp_r, lv_r = cfg['rama500_data']
                 settings         = cfg['settings']
                 levels           = settings['levels'] + [Z_r.max() + 1]
-                colors_bg        = settings['colors']
-                ax.contourf(mp_r, mp_r, Z_r, levels=levels, colors=colors_bg)
-                ax.contour(mp_r, mp_r, Z_r,
-                           levels=settings['levels'][1:],
+                ax.contourf(mp_r, mp_r, Z_r, levels=levels,
+                            colors=settings['colors'])
+                ax.contour(mp_r, mp_r, Z_r, levels=settings['levels'][1:],
                            colors=['0.5'], linewidths=0.5, alpha=0.5)
             else:
                 ax.set_facecolor('#F8F8F8')
@@ -1448,7 +1640,7 @@ def plot_ramachandran_gly_pro(de_novo_pdb, restrained_pdb, aligned_pdb,
             })
 
             src = ('rama500 (Lovell 2003)' if cfg['rama500_data']
-                   else 'analytical boundaries')
+                   else 'analytical boundaries (Lovell 2003)')
             ax.text(0.5, -0.33, f'Background: {src}',
                     transform=ax.transAxes, ha='center',
                     fontsize=7, color='0.50', style='italic')
@@ -1458,11 +1650,11 @@ def plot_ramachandran_gly_pro(de_novo_pdb, restrained_pdb, aligned_pdb,
     plt.tight_layout(rect=[0, 0.04, 1, 1.0])
     plt.savefig(output_png, dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print(f"  GLY/PRO Ramachandran    → {Path(output_png).name}")
+    print(f"  GLY/PRO Ramachandran → {os.path.basename(output_png)}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 18.  ARGUMENT PARSER
+# 19.  ARGUMENT PARSER
 # ══════════════════════════════════════════════════════════════════════════════
 
 def parse_args():
@@ -1472,77 +1664,132 @@ def parse_args():
             Post-processing refinement for cg2at-lite.
             Applies trajectory-informed dihedral restraints (TDC method)
             to improve Ramachandran quality of CG→AA backmapped structures.
+            Only possible with the new Martini 3 explicit backbone (N/CA/C/O).
         """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=textwrap.dedent("""\
+            Examples:
+              # Basic usage
+              python cg2at_refine.py -cg2at CG2AT_2026-08-01_17-07-15 \\
+                  -tpr protein_CG.tpr -xtc trajectory.xtc -step 10
+
+              # Use aligned structure as starting point
+              python cg2at_refine.py -cg2at CG2AT_* \\
+                  -tpr protein_CG.tpr -xtc trajectory.xtc --aa-input aligned
+
+              # Fixed dphi (good for flexible proteins)
+              python cg2at_refine.py -cg2at CG2AT_* \\
+                  -tpr protein_CG.tpr -xtc trajectory.xtc --dphi 10.0
+
+              # Use portion of trajectory
+              python cg2at_refine.py -cg2at CG2AT_* \\
+                  -tpr protein_CG.tpr -xtc trajectory.xtc -b 5000 -e 10000
+        """),
     )
 
-    req = p.add_argument_group('Required')
-    req.add_argument('-cg2at', required=True, metavar='DIR')
-    req.add_argument('-tpr',   required=True, metavar='FILE')
-    req.add_argument('-xtc',   required=True, metavar='FILE')
+    req = p.add_argument_group('Required arguments')
+    req.add_argument('-cg2at', required=True, metavar='DIR',
+        help='Path to CG2AT output folder (e.g. CG2AT_2026-08-01_17-07-15). '
+             'Must contain FINAL/final_cg2at_de_novo.pdb and FINAL/PROTEIN_0.itp.')
+    req.add_argument('-tpr', required=True, metavar='FILE',
+        help='CG topology file (.tpr or .gro). Used to load the CG trajectory.')
+    req.add_argument('-xtc', required=True, metavar='FILE',
+        help='CG trajectory file (.xtc). φ/ψ distributions are extracted from this.')
 
     traj = p.add_argument_group('Trajectory options')
-    traj.add_argument('-step', type=int,   default=10,   metavar='N')
-    traj.add_argument('-b',    type=float, default=0.0,  metavar='ps')
-    traj.add_argument('-e',    type=float, default=-1.0, metavar='ps')
+    traj.add_argument('-step', type=int, default=10, metavar='N',
+        help='Frame stride for φ/ψ extraction (default: 10). '
+             'Use 1 for maximum statistical quality, 10 for speed.')
+    traj.add_argument('-b', type=float, default=0.0, metavar='ps',
+        help='Start time in ps (default: 0 = beginning). '
+             'Use to skip equilibration, e.g. -b 5000.')
+    traj.add_argument('-e', type=float, default=-1.0, metavar='ps',
+        help='End time in ps (default: -1 = full trajectory).')
 
     rest = p.add_argument_group('Restraint options')
-    rest.add_argument('--dphi',    type=float, default=None,          metavar='DEG')
-    rest.add_argument('--kmax',    type=float, default=K_MAX,         metavar='kJ')
-    rest.add_argument('--sigma',   type=float, default=SIG_INFLECTION, metavar='DEG')
-    rest.add_argument('--tdc-low', type=float, default=TDC_LOW,       metavar='TDC')
+    rest.add_argument('--dphi', type=float, default=None, metavar='DEG',
+        help='Fixed dphi tolerance in degrees (default: adaptive σ×0.3, '
+             'clipped 5°–20°). Use --dphi 10.0 for flexible proteins.')
+    rest.add_argument('--kmax', type=float, default=K_MAX, metavar='kJ',
+        help=f'Maximum force constant kJ/mol/rad² (default: {K_MAX}). '
+             'Use 1000 for stronger restraints if improvement is insufficient.')
+    rest.add_argument('--sigma', type=float, default=SIG_INFLECTION, metavar='DEG',
+        help=f'Sigmoid inflection point in degrees (default: {SIG_INFLECTION}°). '
+             'k = kmax × exp(-σ/sigma).')
+    rest.add_argument('--tdc-low', type=float, default=TDC_LOW, metavar='TDC',
+        help=f'Minimum TDC to apply a restraint (default: {TDC_LOW}). '
+             'Residues below this are left to energy minimisation.')
+
+    inp = p.add_argument_group('Input structure options')
+    inp.add_argument('--aa-input',
+        choices=['de_novo', 'aligned'],
+        default='de_novo',
+        metavar='STRUCT',
+        help='AA structure for restraint template and GROMACS input. '
+             '"de_novo" (default): use final_cg2at_de_novo.pdb. '
+             '"aligned": use final_cg2at_aligned.pdb — recommended when an '
+             'experimental or AF3 reference was provided via cg2at-lite -a flag.')
+
+    inp.add_argument('--cg-ref', default=None, metavar='FILE',
+        help='CG reference GRO/PDB for backbone RMSD (same file used with -c in '
+             'cg2at-lite). If omitted, auto-detected from CG2AT_*/INPUT/CG_INPUT.pdb.')
 
     gmx_grp = p.add_argument_group('GROMACS options')
-    gmx_grp.add_argument('--gmx',        default=None)
-    gmx_grp.add_argument('--nsteps-nvt', type=int,   default=10000)
-    gmx_grp.add_argument('--temp',       type=float, default=310.0)
-    gmx_grp.add_argument('--no-nvt',     action='store_true')
-    gmx_grp.add_argument('--ntmpi',      type=int,   default=1)
-    gmx_grp.add_argument('--ntomp',      type=int,   default=4)
+    gmx_grp.add_argument('--gmx', default=None, metavar='EXE',
+        help='GROMACS executable (default: auto-detected from cg2at-lite logs).')
+    gmx_grp.add_argument('--nsteps-nvt', type=int, default=50000, metavar='N',
+        help='NVT MD steps (default: 50000 = 100 ps at dt=0.001 ps).')
+    gmx_grp.add_argument('--temp', type=float, default=300.0, metavar='K',
+        help='NVT temperature in K (default: 300).')
+    gmx_grp.add_argument('--no-nvt', action='store_true',
+        help='Skip NVT — minimisation only. NOT recommended for Ramachandran improvement.')
+    gmx_grp.add_argument('--ntmpi', type=int, default=1,
+        help='MPI threads for mdrun (default: 1).')
+    gmx_grp.add_argument('--ntomp', type=int, default=4,
+        help='OpenMP threads per MPI rank (default: 4).')
 
     out_grp = p.add_argument_group('Output options')
-    out_grp.add_argument('--keep-tmp',  action='store_true')
-    out_grp.add_argument('--no-plots',  action='store_true')
-    out_grp.add_argument('--prefix',    default='final_cg2at_restrained')
+    out_grp.add_argument('--keep-tmp', action='store_true',
+        help='Keep MDP files in FINAL/ instead of gromacs_outputs_refine/.')
+    out_grp.add_argument('--no-plots', action='store_true',
+        help='Skip Ramachandran plot generation.')
+    out_grp.add_argument('--prefix', default='final_cg2at_restrained',
+        help='Output PDB prefix (default: final_cg2at_restrained).')
 
     return p.parse_args()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 19.  BANNER
+# 20.  BANNER
 # ══════════════════════════════════════════════════════════════════════════════
 
 def print_banner():
-    W = 100
-    VERSION = "1.0"
-    LAST_UPDATED = "13-08-2026"
-    print()
-    print('-' * W)
-    print()
-    print(f"{'CG2AT-REFINE':^{W}}")
-    print(f"{'Trajectory-Informed Dihedral Restraint Refinement for cg2at-lite':^{W}}")
-    print()
-    print(f"{'Developed by Hafez Razmazma  |  Supervised by Phillip J. Stansfeld':^{W}}")
-    print(f"{'University of Warwick, Coventry, UK':^{W}}")
-    print(f"{'Contact: hafez.razmazma@warwick.ac.uk':^{W}}")
-    print()
-    print(f"{f'CG2AT-REFINE version: {VERSION}':^{W}}")
-    print(f"{f'Last updated: {LAST_UPDATED}':^{W}}")
-    print()
-    print(f"{'Please cite:':^{W}}")
-    print(f"{'CG2AT2: Vickery & Stansfeld, JCTC 2021, DOI: 10.1021/acs.jctc.1c00295':^{W}}")
-    print()
-    print('-' * W)
-    print()
+    W   = 100
+    sep = '-' * W
+    lines = [
+        sep, '',
+        f"{'CG2AT-REFINE':^{W}}",
+        f"{'Trajectory-Informed Dihedral Restraint Refinement for cg2at-lite':^{W}}",
+        '',
+        f"{'Written by Hafez Razmazma  |  Supervised by Phillip J. Stansfeld':^{W}}",
+        f"{'University of Warwick, Coventry, UK':^{W}}",
+        f"{'Contact: hafez.razmazma@warwick.ac.uk':^{W}}",
+        '',
+        f"{'Please cite:':^{W}}",
+        f"{'CG2AT2: Vickery & Stansfeld, JCTC 2021, DOI: 10.1021/acs.jctc.1c00295':^{W}}",
+        '',
+        sep, '',
+    ]
+    print('\n'.join(lines))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 20.  MAIN
+# 21.  MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
 def main():
-    args    = parse_args()
-    timer   = StepTimer()
+    args  = parse_args()
+    timer = StepTimer()
 
     outputs   = find_cg2at_outputs(args.cg2at)
     final_dir = outputs['final_dir']
@@ -1555,23 +1802,34 @@ def main():
     print(f"  Started : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Log     : {log_path}")
     print()
-    timer.tick('Initialisation')
+    timer.tick('Initialisation and setup')
 
     # ── 1 — outputs ────────────────────────────────────────────────────────────
     print("[1/8] Locating CG2AT outputs ...")
     print(f"  CG2AT folder : {outputs['cg2at_folder']}")
-    print(f"  FINAL dir    : {final_dir}")
-    print(f"  De novo PDB  : {Path(outputs['de_novo_pdb']).name}")
+    print(f"  FINAL dir    : {os.path.basename(final_dir)}")
+    print(f"  De novo PDB  : {os.path.basename(outputs['de_novo_pdb'])}")
     if outputs['aligned_pdb']:
-        print(f"  Aligned PDB  : {Path(outputs['aligned_pdb']).name}")
+        print(f"  Aligned PDB  : {os.path.basename(outputs['aligned_pdb'])}")
     else:
-        print(f"  Aligned PDB  : not found (de novo only)")
+        print(f"  Aligned PDB  : not found")
+
+    # ── Select AA input structure ──────────────────────────────────────────────
+    if args.aa_input == 'aligned':
+        if outputs['aligned_pdb'] and os.path.exists(outputs['aligned_pdb']):
+            aa_input_pdb = outputs['aligned_pdb']
+            print(f"  AA input     : final_cg2at_aligned.pdb  (--aa-input aligned)")
+        else:
+            print(f"  WARNING: aligned PDB not found — falling back to de novo")
+            aa_input_pdb = outputs['de_novo_pdb']
+    else:
+        aa_input_pdb = outputs['de_novo_pdb']
+        print(f"  AA input     : final_cg2at_de_novo.pdb  (default)")
 
     # ── 2 — GROMACS ────────────────────────────────────────────────────────────
     print("\n[2/8] Detecting GROMACS ...")
     gmx = args.gmx if args.gmx else find_gromacs_executable(outputs['cg2at_folder'])
     print(f"  GMX executable: {gmx}")
-    timer.tick('Initialisation and setup')
 
     # ── 3 — time range ─────────────────────────────────────────────────────────
     print("\n[3/8] Parsing trajectory time range ...")
@@ -1586,20 +1844,21 @@ def main():
 
     # ── 4 — phi/psi ────────────────────────────────────────────────────────────
     print("\n[4/8] Extracting CG-backbone-derived φ/ψ from trajectory ...")
+    tee.set_log_only(True)
     if _TDG_AVAILABLE:
-        # Frame progress printed by traj_dih_guide — goes to terminal
         distributions = extract_phi_psi(
             args.tpr, args.xtc,
             start=start_frame, stop=stop_frame, step=args.step)
     else:
         distributions = _extract_phi_psi_inline(
             args.tpr, args.xtc,
-            start=start_frame, stop=stop_frame, step=args.step, tee=tee)
-
+            start=start_frame, stop=stop_frame, step=args.step)
+    tee.set_log_only(False)
+    print(f"  Done — {n_frames} frames processed for {len(distributions)} residues.")
     timer.tick('Extract φ/ψ from CG trajectory')
 
     # ── 5 — TDC ────────────────────────────────────────────────────────────────
-    print("[5/8] Computing TDC scores ...")
+    print("\n[5/8] Computing TDC scores ...")
     if _TDG_AVAILABLE:
         result         = compute_TDC(distributions)
         global_TDC     = result[0]
@@ -1615,23 +1874,18 @@ def main():
     n_high   = sum(1 for t in per_res_TDC.values() if t >= 70)
     n_medium = sum(1 for t in per_res_TDC.values() if 40 <= t < 70)
     n_low    = sum(1 for t in per_res_TDC.values() if t <  40)
-
     print(f"  Global TDC score : {global_TDC:.1f}/100")
     print(f"  Global weight    : {global_weight:.2f}")
     print(f"  HIGH   (TDC≥70)  : {n_high} residues → strong restraints")
     print(f"  MEDIUM (40-70)   : {n_medium} residues → moderate restraints")
     print(f"  LOW    (TDC<40)  : {n_low} residues → not restrained")
 
-    # Per-residue TDC table goes to log only — keeps terminal clean
+    # TDC table → log only
     if _TDG_AVAILABLE and per_res_stats:
-        # Capture table to log only
-        old_stdout = sys.stdout
-        sys.stdout = tee._log  # type: ignore[assignment]
-        try:
-            print_TDC_table(distributions, per_res_TDC, per_res_weight,
-                            per_res_stats, global_TDC, global_weight)
-        finally:
-            sys.stdout = old_stdout
+        tee.set_log_only(True)
+        print_TDC_table(distributions, per_res_TDC, per_res_weight,
+                        per_res_stats, global_TDC, global_weight)
+        tee.set_log_only(False)
 
     timer.tick('Compute TDC scores')
 
@@ -1641,7 +1895,7 @@ def main():
     if _TDG_AVAILABLE:
         write_dihedral_restraints(
             distributions, per_res_TDC, per_res_stats,
-            aa_pdb     = outputs['de_novo_pdb'],
+            aa_pdb     = aa_input_pdb,
             output_itp = itp_path,
             k_max      = args.kmax,
             sigma      = args.sigma,
@@ -1650,15 +1904,14 @@ def main():
     else:
         _write_restraints_inline(
             distributions, per_res_TDC,
-            aa_pdb=outputs['de_novo_pdb'], output_itp=itp_path,
+            aa_pdb=aa_input_pdb, output_itp=itp_path,
             k_max=args.kmax, sigma=args.sigma,
             tdc_low=args.tdc_low, dphi_fixed=args.dphi)
     patch_protein_itp(outputs['protein_itp'], OUT_RESTRAINTS_ITP)
     timer.tick('Generate dihedral restraints ITP')
 
     # ── 7 — MDP files ──────────────────────────────────────────────────────────
-    # MDP writing goes to log only
-    tee.log_only("\n[7/8] Writing MDP files ...\n")
+    print("\n[7/8] Writing MDP files ...")
     minim_mdp, nvt_mdp = write_mdp_files(
         final_dir, nsteps_nvt=args.nsteps_nvt, temp=args.temp)
 
@@ -1666,35 +1919,46 @@ def main():
     print("\n[8/8] Running GROMACS pipeline ...")
     out_pdb = run_gromacs_pipeline(
         gmx=gmx, final_dir=final_dir,
-        de_novo_pdb=outputs['de_novo_pdb'], topol_top=outputs['topol_top'],
+        aa_input_pdb=aa_input_pdb, topol_top=outputs['topol_top'],
         minim_mdp=minim_mdp, nvt_mdp=nvt_mdp,
         skip_nvt=args.no_nvt, ntmpi=args.ntmpi, ntomp=args.ntomp,
-        out_prefix=args.prefix, tee=tee)
-
-    if not args.keep_tmp:
-        gmx_dir = os.path.join(final_dir, GROMACS_SUBDIR)
-        for mdp in [minim_mdp, nvt_mdp]:
-            dst = os.path.join(gmx_dir, os.path.basename(mdp))
-            if os.path.exists(mdp):
-                shutil.move(mdp, dst)
-        mdout = os.path.join(final_dir, 'mdout.mdp')
-        if os.path.exists(mdout):
-            shutil.move(mdout, os.path.join(gmx_dir, 'mdout.mdp'))
-
+        out_prefix=args.prefix)
     timer.tick('GROMACS minimisation and NVT MD')
 
     # ── TDC B-factor PDB ───────────────────────────────────────────────────────
     tdc_pdb = os.path.join(final_dir, OUT_TDC_PDB)
     write_tdc_bfactor_pdb(out_pdb, per_res_TDC, tdc_pdb)
 
+    # ── RMSD report ────────────────────────────────────────────────────────────
+    # Resolve CG reference:
+    #   1. --cg-ref flag (explicit user choice)
+    #   2. Auto-detected CG2AT_*/INPUT/CG_INPUT.pdb
+    #   3. None — Section 1 skipped, pairwise only
+    if args.cg_ref:
+        cg_ref = args.cg_ref
+        print(f"  CG reference : {os.path.basename(cg_ref)}  (--cg-ref flag)")
+    elif outputs.get('cg_input_pdb'):
+        cg_ref = outputs['cg_input_pdb']
+        print(f"  CG reference : auto-detected INPUT/CG_INPUT.pdb")
+    else:
+        cg_ref = None
+        print("  CG reference : not found — pairwise RMSD only")
+
+    rmsd_data = print_rmsd_report(
+        de_novo_pdb    = outputs['de_novo_pdb'],
+        aligned_pdb    = outputs['aligned_pdb'],
+        restrained_pdb = out_pdb,
+        cg_ref         = cg_ref,
+    )
+
     # ── Load reference data ────────────────────────────────────────────────────
     print('\n── Ramachandran quality assessment ' + '─' * 35)
 
     Z, phi_bins, psi_bins = _load_mda_reference()
     if Z is not None:
-        tee.log_only(f"  MDAnalysis reference loaded (Z {Z.shape[0]}×{Z.shape[1]})\n")
+        print(f"  MDAnalysis reference loaded ✅")
     else:
-        tee.log_only("  MDAnalysis reference not found — using analytical boundaries\n")
+        print("  MDAnalysis reference not found — using analytical boundaries")
 
     rama500_dir          = _find_rama500_dir()
     rama500_general_data = None
@@ -1702,12 +1966,12 @@ def main():
     rama500_pro_data     = None
 
     if rama500_dir:
-        tee.log_only(f"  rama500 data found: {rama500_dir}\n")
+        print(f"  rama500 data: {rama500_dir}")
         for key, cfg in _RAMA500_SETTINGS.items():
             fpath = os.path.join(rama500_dir, cfg['filename'])
             if os.path.exists(fpath):
                 try:
-                    Z_r, mp_r = _load_rama500_file(fpath)
+                    Z_r, mp_r  = _load_rama500_file(fpath)
                     data_tuple = (Z_r, mp_r, cfg['levels'])
                     if key == 'general':
                         rama500_general_data = data_tuple
@@ -1715,9 +1979,10 @@ def main():
                         rama500_gly_data = data_tuple
                     elif key == 'pro':
                         rama500_pro_data = data_tuple
-                    tee.log_only(f"    Loaded {cfg['filename']}\n")
-                except Exception as e:
-                    tee.log_only(f"    WARNING: could not load {cfg['filename']}: {e}\n")
+                except Exception:
+                    pass
+    else:
+        print("  rama500 not found — GLY/PRO will use analytical boundaries")
 
     # ── Assessment ─────────────────────────────────────────────────────────────
     def assess(pdb):
@@ -1736,10 +2001,12 @@ def main():
     print_rama_summary('TDC Restrained — General', stats_rest_g)
     if stats_al_g:
         print_rama_summary('Aligned — General',    stats_al_g)
+
     print_rama_summary('De novo — GLY',            stats_dn_gly)
     print_rama_summary('TDC Restrained — GLY',     stats_rest_gly)
     if stats_al_gly:
         print_rama_summary('Aligned — GLY',        stats_al_gly)
+
     print_rama_summary('De novo — PRO',            stats_dn_pro)
     print_rama_summary('TDC Restrained — PRO',     stats_rest_pro)
     if stats_al_pro:
@@ -1761,13 +2028,16 @@ def main():
         quality_dat,
         stats_dn_g,   stats_rest_g,   stats_al_g,
         stats_dn_gly, stats_rest_gly, stats_al_gly,
-        stats_dn_pro, stats_rest_pro, stats_al_pro,
+        stats_pro_dn  = stats_dn_pro,
+        stats_pro_rest= stats_rest_pro,
+        stats_pro_al  = stats_al_pro,
+        rmsd_data     = rmsd_data,
     )
+    print(f"  Structure quality → {os.path.basename(quality_dat)}")
     timer.tick('Ramachandran quality assessment')
 
     # ── Plots ──────────────────────────────────────────────────────────────────
     if not args.no_plots:
-        print('\n── Generating Ramachandran plots ' + '─' * 37)
         rama_png = os.path.join(final_dir, OUT_RAMA_PNG)
         plot_ramachandran(
             de_novo_pdb          = outputs['de_novo_pdb'],
@@ -1779,7 +2049,6 @@ def main():
             psi_bins             = psi_bins,
             rama500_general_data = rama500_general_data,
         )
-
         rama_gp_png = os.path.join(final_dir, OUT_RAMA_GLYRO_PNG)
         plot_ramachandran_gly_pro(
             de_novo_pdb      = outputs['de_novo_pdb'],
@@ -1789,29 +2058,32 @@ def main():
             rama500_gly_data = rama500_gly_data,
             rama500_pro_data = rama500_pro_data,
         )
-        timer.tick('Generate Ramachandran plots')
+    timer.tick('Generate Ramachandran plots')
 
-    # ── Timing summary ─────────────────────────────────────────────────────────
-    timing_lines = timer.summary_lines()
-    for line in timing_lines:
-        tee.log_only(line)
+    # ── Timing report ──────────────────────────────────────────────────────────
+    print()
+    print(timer.report())
 
     # ── Final summary ──────────────────────────────────────────────────────────
-    W = 100
-    print(f"\n{'-' * W}")
-    print(f"\n{'Refinement complete!':^{W}}\n")
-    print(f"{'-' * W}\n")
-    print(f"  Final restrained structure : {Path(out_pdb).name}")
-    print(f"  TDC B-factor structure     : {Path(tdc_pdb).name}")
-    print(f"  Ramachandran quality       : {Path(quality_dat).name}")
+    W   = 100
+    sep = '-' * W
+    print(sep)
+    print(f"{'Refinement complete!':^{W}}")
+    print(sep)
+    print()
+    print(f"  Final restrained structure : {os.path.basename(out_pdb)}")
+    print(f"  TDC B-factor structure     : {os.path.basename(tdc_pdb)}")
+    print(f"  Ramachandran quality       : {os.path.basename(quality_dat)}")
     if not args.no_plots:
-        print(f"  General Ramachandran plot  : {Path(rama_png).name}")
-        print(f"  GLY/PRO Ramachandran plot  : {Path(rama_gp_png).name}")
+        print(f"  General Ramachandran plot  : {os.path.basename(rama_png)}")
+        print(f"  GLY/PRO Ramachandran plot  : {os.path.basename(rama_gp_png)}")
     print(f"  GROMACS logs               : {GROMACS_SUBDIR}/")
-    print(f"  Full run log               : {Path(log_path).name}")
-    print(f"\n  TDC visualisation in PyMOL:")
+    print(f"  Full run log               : {os.path.basename(log_path)}")
+    print()
+    print(f"  TDC visualisation in PyMOL:")
     print(f"    spectrum b, blue_white_red, minimum=0, maximum=100")
-    print(f"\n  TDC visualisation in VMD:")
+    print()
+    print(f"  TDC visualisation in VMD:")
     print(f"    mol modcolor 0 0 Beta  |  color scale method BWR")
     print()
 
