@@ -5,3 +5,4 @@ __pycache__/
 *~
 dist/
 src/CG2AT_lite.egg-info/
+build/

@@ -1,2 +1,3 @@
 recursive-include src/cg2at_lite/forcefields *
 recursive-include src/cg2at_lite/fragments *
+recursive-include src/cg2at_lite/bin/rama_data *.data
