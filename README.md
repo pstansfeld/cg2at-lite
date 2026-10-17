@@ -16,7 +16,7 @@
 8. [Output Structure](#output-structure)
 9. [Output Conversion Modes](#output-conversion-modes)
 10. [Detailed Flag Guide](#detailed-flag-guide)
-11. [Trajectory-Guided Refinement](#trajectory-guided-refinement)
+11. [Trajectory-Guided Dihedral Restraints](#trajectory-guided-dihedral-restraints)
 12. [Database Structure](#database-structure)
 13. [Adding Fragments to the Database](#adding-fragments-to-the-database)
 
@@ -40,7 +40,7 @@ Install with `pip` from a clone of this repository:
 git clone https://github.com/pstansfeld/cg2at-lite.git
 cd cg2at-lite
 pip install .              # core back-mapping only
-pip install ".[refine]"    # also installs MDAnalysis + matplotlib for cg2at_refine
+pip install ".[refine]"    # also installs MDAnalysis + matplotlib for -refine
 ```
 
 This provides three commands:
@@ -48,7 +48,7 @@ This provides three commands:
 | Command | Purpose |
 |---|---|
 | `cg2at_lite` | CG → atomistic conversion (the main program) |
-| `cg2at_refine` | Optional trajectory-guided dihedral refinement of the output (see [below](#trajectory-guided-refinement)) |
+| `cg2at_refine` | Standalone version of `-refine`, applied to an existing CG2AT output folder |
 | `traj_dih_guide` | Standalone φ/ψ analysis and dihedral restraint generation from a CG trajectory |
 
 The scripts can also be run in place without installing, e.g. `python src/cg2at_lite/bin/cg2at.py ...`.
@@ -60,11 +60,11 @@ The scripts can also be run in place without installing, e.g. `python src/cg2at_
 | Category | Requirement |
 |---|---|
 | Python | v3.7 or higher |
-| GROMACS | v5 or higher (2020+ for `cg2at_refine`) |
+| GROMACS | v5 or higher (2020+ for `-refine`) |
 | NumPy | v1.26.4 or higher |
 | SciPy | any recent version |
-| MDAnalysis | v2.0 or higher — `cg2at_refine` only |
-| Matplotlib | any recent version — `cg2at_refine` only |
+| MDAnalysis | v2.0 or higher — `-refine` only |
+| Matplotlib | any recent version — `-refine` only |
 
 All other dependencies (`argparse`, `copy`, `glob`, `math`, `multiprocessing`, `os`, `pathlib`, `re`, `shutil`, `subprocess`, `sys`, `time`, etc.) are included in the Python standard library.
 
@@ -132,6 +132,7 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 | `-info` | flag | off | Print available force fields and fragments |
 | `-version` | flag | off | Print CG2AT2 version |
 | `-v` | flag (stackable) | off | Increase output verbosity (up to `-vvv`) |
+| `-refine` | `xtc` | — | CG trajectory for [trajectory-guided dihedral restraints](#trajectory-guided-dihedral-restraints) (`-refine_*` flags tune it) |
 | `-h` | flag | — | Show help and exit |
 
 ---
@@ -397,43 +398,42 @@ CG2AT2 skips any step for which output files already exist, so a failed run can 
 
 ---
 
-## Trajectory-Guided Refinement
+## Trajectory-Guided Dihedral Restraints
 
-`cg2at_refine` is an optional post-processing step that improves the Ramachandran quality of back-mapped proteins, particularly with the Martini 3 explicit-backbone (N/CA/C/O) fragment library `martini_3-2_nextgen_protein_charmm36`. It reads the φ/ψ distributions from the original CG trajectory and turns them into per-residue dihedral restraints, without biasing towards any reference structure.
+`-refine` improves the backbone (Ramachandran) quality of back-mapped proteins built with the Martini 3 explicit-backbone (N/CA/C/O) fragment library `martini_3-2_nextgen_protein_charmm36`. It reads the φ/ψ distributions from the CG trajectory and applies them as backbone dihedral restraints during the de novo NVT, without biasing towards any reference structure. Requires `pip install ".[refine]"`.
 
-For each residue a **Trajectory Dihedral Confidence (TDC)** score is computed from the circular spread of φ/ψ across the trajectory — narrow distributions give a high TDC and a strong restraint, broad distributions give a weak or no restraint:
+For each φ and ψ a **Trajectory Dihedral Confidence (TDC)** score is computed from its circular spread across the trajectory. Narrow distributions give a high TDC and a strong restraint; broad or bimodal distributions are left unrestrained:
 
 ```
-TDC = 100 × (1 − σ_eff / σ_max)
-k   = k_max × exp(−σ_eff / σ_inflection)
+TDC = 100 × (1 − σ / σ_max)
+k   = k_max × exp(−σ / σ_inflection)
 ```
-
-The restrained structure is then minimised and briefly equilibrated (NVT) in GROMACS.
 
 ```bash
-# 1. back-map the last CG frame
 cg2at_lite -c cg_lastframe.gro -a reference.pdb \
-    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-jul2022 -w tip3p
-
-# 2. refine using the CG trajectory
-cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc -step 10
+    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-jul2022 -w tip3p \
+    -refine cg_traj.xtc -refine_top cg.tpr
 ```
+
+How it fits into the pipeline:
+
+1. After the protein is built, the trajectory backbone is split into the same chains as the CG input and TDC is scored per chain (`PROTEIN/TDC_scores.dat`). No dihedrals are taken across chain breaks.
+2. After `pdb2gmx`, a `PROTEIN_<chain>_dihre.itp` is written for each chain, numbered within that chain's molecule. Each `PROTEIN_<chain>.itp` includes it under `#ifdef DIHEDRALPOSRES`, in the same way as the position restraint files.
+3. The merged system is minimised as normal, then the de novo NVT runs with `-DDIHEDRALPOSRES` (alongside the usual CA position restraints) for `-refine_nvt` steps (default 50 ps instead of 5 ps). The aligned (`-a`) output is unaffected.
+4. Ramachandran quality before (minimised) and after (restrained NVT) is reported.
 
 | Flag | Default | Description |
 |---|---|---|
-| `-cg2at` | — | CG2AT output folder (required) |
-| `-tpr` | — | CG topology, `.tpr` or `.gro` (required) |
-| `-xtc` | — | CG trajectory (required) |
-| `-step` / `-b` / `-e` | `10` / `0` / end | Frame stride and time window (ps) |
-| `--aa-input` | `de_novo` | Start from `final_cg2at_de_novo.pdb` or `aligned` (`final_cg2at_aligned.pdb`) |
-| `--kmax` / `--sigma` / `--tdc-low` | `500` / `30` / `40` | Max force constant (kJ/mol/rad²), sigmoid inflection (°), min TDC to restrain |
-| `--dphi` | adaptive | Fixed restraint tolerance (°) |
-| `--nsteps-nvt` / `--temp` / `--no-nvt` | `50000` / `300` / off | NVT length, temperature, or minimisation only |
-| `--gmx` / `--ntmpi` / `--ntomp` | auto / `1` / `4` | GROMACS executable and threads |
-| `--cg-ref` | — | CG reference for backbone RMSD comparison |
-| `--no-plots` / `--keep-tmp` / `--prefix` | | Output control |
+| `-refine` | — | CG trajectory (e.g. `.xtc`) |
+| `-refine_top` | `-c` file | Topology for the trajectory (`.tpr`/`.gro`/`.pdb`) if `-c` does not match it |
+| `-refine_step` / `-refine_b` / `-refine_e` | `10` / `0` / end | Frame stride and time window (ps) |
+| `-refine_kmax` / `-refine_sigma` / `-refine_tdc` | `500` / `30` / `40` | Max force constant (kJ/mol/rad²), decay scale (°), minimum TDC to restrain |
+| `-refine_dphi` | adaptive | Fixed restraint tolerance (°) |
+| `-refine_nvt` | `50000` | Restrained NVT length (1 fs steps) |
 
-Outputs are written to `FINAL/`: `final_cg2at_restrained.pdb`, `final_cg2at_restrained_TDC.pdb` (TDC in the B-factor column), `structure_quality_restrained.dat`, Ramachandran plots (`ramachandran_restrained.png`, `ramachandran_gly_pro_restrained.png`) and `cg2at_refine.log`. Ramachandran contours use the rama500 data of Lovell *et al.* (2003), bundled in `src/cg2at_lite/bin/rama_data/`.
+`-refine` requires `-o all` or `-o de_novo`. Additional outputs in `FINAL/`: `final_cg2at_de_novo_TDC.pdb` (TDC in the B-factor column), `structure_quality_restrained.dat`, `ramachandran_restrained.png` and `ramachandran_gly_pro_restrained.png`. The `PROTEIN_<chain>_dihre.itp` files are copied to `FINAL/` too, so the restraints can be switched on in later simulations with `define = -DDIHEDRALPOSRES`. Ramachandran contours use the rama500 data of Lovell *et al.* (2003), bundled in `src/cg2at_lite/bin/rama_data/`.
+
+The standalone `cg2at_refine` command applies the same restraints as a separate minimisation + NVT to an existing CG2AT output folder (`cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc`).
 
 Worked examples (1UBQ, 2LZM, 3D4S, 3X29, 6TIQ) with inputs, commands and reference outputs are in [`example/`](example/).
 

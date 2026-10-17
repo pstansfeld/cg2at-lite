@@ -304,6 +304,8 @@ def convert_topology(topol, protein_number, res_type):
                     itp_write.write('#ifdef HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_high_posre.itp\"\n#endif\n')
                     itp_write.write('#ifdef VERY_HIGHPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_very_high_posre.itp\"\n#endif\n')
                     itp_write.write('#ifdef ULTRAPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_ultra_posre.itp\"\n#endif\n')
+                    if g_var.args.refine is not None:
+                        itp_write.write('#ifdef DIHEDRALPOSRES\n#include \"'+res_type+'_'+str(protein_number)+'_dihre.itp\"\n#endif\n')
     else:
         raise InputError('cannot find: '+topol+str(protein_number)+'.top')
 
@@ -428,7 +430,7 @@ def write_merged_topol():
                     topologies_to_include.append('#include \"'+residue_type+'_'+str(unit)+'.itp\"\n')
                     gen.file_copy_and_check(g_var.working_dir+residue_type+'/'+residue_type+'_de_novo_'+str(unit)+'.itp', residue_type+'_'+str(unit)+'.itp')
                     if residue_type in ['PROTEIN']:
-                        for posres_type in ['_very_low_posre.itp','_low_posre.itp','_mid_posre.itp','_high_posre.itp','_very_high_posre.itp','_ultra_posre.itp','_ca_posre.itp','_posre.itp']:
+                        for posres_type in ['_very_low_posre.itp','_low_posre.itp','_mid_posre.itp','_high_posre.itp','_very_high_posre.itp','_ultra_posre.itp','_ca_posre.itp','_posre.itp','_dihre.itp']:
                             gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_'+str(unit)+posres_type, 'PROTEIN_'+str(unit)+posres_type)
                         gen.file_copy_and_check(g_var.working_dir+'PROTEIN/PROTEIN_disres.itp', 'PROTEIN_disres.itp')  
         if os.path.exists('extra_atomtypes.itp'):
@@ -504,10 +506,12 @@ def run_nvt(input_file):
     print('\nRunning NVT on de novo system', end='\r')
     os.chdir(g_var.merged_directory)   
     gen.mkdir_directory(g_var.merged_directory+'NVT')
+#### trajectory-guided dihedral restraints use a longer NVT so the backbone can relax into the restrained φ/ψ
+    dihres, nsteps = ('', 5000) if g_var.args.refine is None else (' -DDIHEDRALPOSRES', g_var.args.refine_nvt)
     if g_var.user_at_input and g_var.args.disre and g_var.gmx_version:
-        write_steered_mdp(g_var.merged_directory+'nvt.mdp', '-DDISRES -DPOSRESCA', 5000, 0.001)
+        write_steered_mdp(g_var.merged_directory+'nvt.mdp', '-DDISRES -DPOSRESCA'+dihres, nsteps, 0.001)
     elif 'PROTEIN' in g_var.system:
-        write_steered_mdp(g_var.merged_directory+'nvt.mdp', '-DPOSRESCA', 5000, 0.001)
+        write_steered_mdp(g_var.merged_directory+'nvt.mdp', '-DPOSRESCA'+dihres, nsteps, 0.001)
     else:
         write_steered_mdp(g_var.merged_directory+'nvt.mdp', '', 5000, 0.001)
     gromacs([g_var.args.gmx+' grompp'+
