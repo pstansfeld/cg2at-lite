@@ -1,0 +1,52 @@
+Structure quality assessment — cg2at_refine.py (TDC method)
+Generated: 2026-08-12 20:59:03
+
+────────────────────────────────────────────────────────────
+GENERAL RESIDUES (non-GLY, non-PRO)
+
+────────────────────────────────────────────────────────────
+Metric                                   De novo   Restrained      Aligned
+─────────────────────────────────── ──────────── ──────────── ────────────
+Ramachandran favoured (%)                  92.42        96.97       100.00
+Ramachandran allowed  (%)                   6.06         3.03         0.00
+Ramachandran outliers (%)                   1.52         0.00         0.00
+N residues assessed                           66           66           66
+
+Outlier residues:
+  De novo    : LEU42
+  Restrained : none
+  Aligned    : none
+
+  GLY/PRO excluded: 8 residues
+
+────────────────────────────────────────────────────────────
+GLYCINE
+
+────────────────────────────────────────────────────────────
+Metric                                   De novo   Restrained      Aligned
+─────────────────────────────────── ──────────── ──────────── ────────────
+Ramachandran favoured (%)                  80.00       100.00       100.00
+Ramachandran allowed  (%)                   0.00         0.00         0.00
+Ramachandran outliers (%)                  20.00         0.00         0.00
+N residues assessed                            5            5            5
+
+Outlier residues:
+  De novo    : GLY34
+  Restrained : none
+  Aligned    : none
+
+────────────────────────────────────────────────────────────
+PROLINE
+
+────────────────────────────────────────────────────────────
+Metric                                   De novo   Restrained      Aligned
+─────────────────────────────────── ──────────── ──────────── ────────────
+Ramachandran favoured (%)                 100.00       100.00       100.00
+Ramachandran allowed  (%)                   0.00         0.00         0.00
+Ramachandran outliers (%)                   0.00         0.00         0.00
+N residues assessed                            3            3            3
+
+Outlier residues:
+  De novo    : none
+  Restrained : none
+  Aligned    : none

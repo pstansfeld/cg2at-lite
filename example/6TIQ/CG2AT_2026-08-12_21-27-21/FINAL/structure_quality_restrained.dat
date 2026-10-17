@@ -1,0 +1,52 @@
+Structure quality assessment — cg2at_refine.py (TDC method)
+Generated: 2026-08-12 22:47:02
+
+────────────────────────────────────────────────────────────
+GENERAL RESIDUES (non-GLY, non-PRO)
+
+────────────────────────────────────────────────────────────
+Metric                                   De novo   Restrained      Aligned
+─────────────────────────────────── ──────────── ──────────── ────────────
+Ramachandran favoured (%)                  78.19        92.18        94.65
+Ramachandran allowed  (%)                  14.40         5.76         5.35
+Ramachandran outliers (%)                   7.41         2.06         0.00
+N residues assessed                          243          243          243
+
+Outlier residues:
+  De novo    : ALA1, SER45, SER56, THR71, ASN78, GLU87, LEU96, HIS121, ALA140, MET154, ASN167, SER192, SER214, ASN215, ILE226, ASN237, ASN238, GLU279
+  Restrained : ASN75, ASP185, ASN198, ASP229, ASN237
+  Aligned    : none
+
+  GLY/PRO excluded: 38 residues
+
+────────────────────────────────────────────────────────────
+GLYCINE
+
+────────────────────────────────────────────────────────────
+Metric                                   De novo   Restrained      Aligned
+─────────────────────────────────── ──────────── ──────────── ────────────
+Ramachandran favoured (%)                  71.88        75.00        93.75
+Ramachandran allowed  (%)                  25.00        15.62         6.25
+Ramachandran outliers (%)                   3.12         9.38         0.00
+N residues assessed                           32           32           32
+
+Outlier residues:
+  De novo    : GLY271
+  Restrained : GLY125, GLY219, GLY245
+  Aligned    : none
+
+────────────────────────────────────────────────────────────
+PROLINE
+
+────────────────────────────────────────────────────────────
+Metric                                   De novo   Restrained      Aligned
+─────────────────────────────────── ──────────── ──────────── ────────────
+Ramachandran favoured (%)                  66.67       100.00        83.33
+Ramachandran allowed  (%)                  16.67         0.00         0.00
+Ramachandran outliers (%)                  16.67         0.00        16.67
+N residues assessed                            6            6            6
+
+Outlier residues:
+  De novo    : PRO104
+  Restrained : none
+  Aligned    : PRO252
