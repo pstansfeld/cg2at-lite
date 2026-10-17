@@ -149,14 +149,24 @@ warnings.filterwarnings('ignore', message='Found missing chainIDs')
 
 # ── Import core functions from traj_dih_guide ────────────────────────────────
 try:
-    from traj_dih_guide import (
-        extract_phi_psi,
-        compute_TDC,
-        write_dihedral_restraints,
-        print_TDC_table,
-    )
+    try:
+        from cg2at_lite.bin.traj_dih_guide import (
+            extract_phi_psi,
+            compute_TDC,
+            write_dihedral_restraints,
+            print_TDC_table,
+        )
+    except ImportError:
+        from traj_dih_guide import (
+            extract_phi_psi,
+            compute_TDC,
+            write_dihedral_restraints,
+            print_TDC_table,
+        )
     _TDG_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    print(f"  WARNING: traj_dih_guide could not be imported ({e}); "
+          f"dihedral restraints will be skipped.")
     _TDG_AVAILABLE = False
 
 

@@ -16,8 +16,9 @@
 8. [Output Structure](#output-structure)
 9. [Output Conversion Modes](#output-conversion-modes)
 10. [Detailed Flag Guide](#detailed-flag-guide)
-11. [Database Structure](#database-structure)
-12. [Adding Fragments to the Database](#adding-fragments-to-the-database)
+11. [Trajectory-Guided Refinement](#trajectory-guided-refinement)
+12. [Database Structure](#database-structure)
+13. [Adding Fragments to the Database](#adding-fragments-to-the-database)
 
 ---
 
@@ -33,13 +34,24 @@ CG2AT2 converts Coarse-Grained (CG) molecular systems (e.g. Martini) back to ato
 
 ## Installation
 
-CG2AT2 requires no compilation. Download it directly from GitHub and run it immediately.
-
-**Recommended:** add CG2AT2 to your `PATH` for convenience by appending the following to your `~/.profile` or `~/.bashrc`:
+Install with `pip` from a clone of this repository:
 
 ```bash
-export PATH="/path/to/CG2AT2:$PATH"
+git clone https://github.com/pstansfeld/cg2at-lite.git
+cd cg2at-lite
+pip install .              # core back-mapping only
+pip install ".[refine]"    # also installs MDAnalysis + matplotlib for cg2at_refine
 ```
+
+This provides three commands:
+
+| Command | Purpose |
+|---|---|
+| `cg2at_lite` | CG → atomistic conversion (the main program) |
+| `cg2at_refine` | Optional trajectory-guided dihedral refinement of the output (see [below](#trajectory-guided-refinement)) |
+| `traj_dih_guide` | Standalone φ/ψ analysis and dihedral restraint generation from a CG trajectory |
+
+The scripts can also be run in place without installing, e.g. `python src/cg2at_lite/bin/cg2at.py ...`.
 
 ---
 
@@ -47,10 +59,12 @@ export PATH="/path/to/CG2AT2:$PATH"
 
 | Category | Requirement |
 |---|---|
-| Python | v3.0 or higher |
-| GROMACS | v5 or higher |
-| NumPy | any recent version |
+| Python | v3.7 or higher |
+| GROMACS | v5 or higher (2020+ for `cg2at_refine`) |
+| NumPy | v1.26.4 or higher |
 | SciPy | any recent version |
+| MDAnalysis | v2.0 or higher — `cg2at_refine` only |
+| Matplotlib | any recent version — `cg2at_refine` only |
 
 All other dependencies (`argparse`, `copy`, `glob`, `math`, `multiprocessing`, `os`, `pathlib`, `re`, `shutil`, `subprocess`, `sys`, `time`, etc.) are included in the Python standard library.
 
@@ -62,17 +76,17 @@ All other dependencies (`argparse`, `copy`, `glob`, `math`, `multiprocessing`, `
 
 **Minimal run** (CG structure only):
 ```bash
-python cg2at.py -c cg_input.gro
+cg2at_lite -c cg_input.gro
 ```
 
 **Recommended run** (with original atomistic structure for improved quality):
 ```bash
-python cg2at.py -c cg_input.gro -a atomistic_input.gro
+cg2at_lite -c cg_input.gro -a atomistic_input.gro
 ```
 
 **Fully automated run** (no interactive prompts):
 ```bash
-python cg2at.py -c cg_input.gro -a atomistic_input.gro \
+cg2at_lite -c cg_input.gro -a atomistic_input.gro \
     -w tip3p -fg martini_2-2_charmm36 -ff charmm36-jul2022
 ```
 
@@ -163,7 +177,7 @@ If only a partial atomistic structure is supplied (e.g. the main protein but not
 
 Multiple atomistic input files are accepted:
 ```bash
-python cg2at.py -c cg_input.gro -a chain_A.pdb chain_B.pdb
+cg2at_lite -c cg_input.gro -a chain_A.pdb chain_B.pdb
 ```
 
 ---
@@ -265,16 +279,16 @@ For multimeric proteins, CG2AT2 offers several rigid-body fitting strategies:
 
 ```bash
 # Default: fit each atomistic chain to its CG counterpart independently
-python cg2at.py -c cg.gro -a protein.pdb
+cg2at_lite -c cg.gro -a protein.pdb
 
 # Fit by CG chain (one group per CG chain)
-python cg2at.py -c cg.gro -a protein.pdb -group chain
+cg2at_lite -c cg.gro -a protein.pdb -group chain
 
 # Fit the entire atomistic structure as a single rigid body
-python cg2at.py -c cg.gro -a protein.pdb -group all
+cg2at_lite -c cg.gro -a protein.pdb -group all
 
 # Fit specific chains as groups (chains 0+2 together, chains 1+3 together)
-python cg2at.py -c cg.gro -a protein.pdb -group 0,2 1,3
+cg2at_lite -c cg.gro -a protein.pdb -group 0,2 1,3
 ```
 
 ---
@@ -285,7 +299,7 @@ For homomeric complexes only one chain needs to be supplied; the `-d` flag copie
 
 ```bash
 # Use 3 copies of chain 0 and 2 copies of chain 1
-python cg2at.py -c cg.gro -a monomer.pdb -d 0:3 1:2
+cg2at_lite -c cg.gro -a monomer.pdb -d 0:3 1:2
 ```
 
 ---
@@ -380,6 +394,48 @@ CG2AT2 skips any step for which output files already exist, so a failed run can 
 -posre POPE      # Generate a position restraint file for POPE
 -compare martini_v3.itp   # Compare an itp against the database
 ```
+
+---
+
+## Trajectory-Guided Refinement
+
+`cg2at_refine` is an optional post-processing step that improves the Ramachandran quality of back-mapped proteins, particularly with the Martini 3 explicit-backbone (N/CA/C/O) fragment library `martini_3-2_nextgen_protein_charmm36`. It reads the φ/ψ distributions from the original CG trajectory and turns them into per-residue dihedral restraints, without biasing towards any reference structure.
+
+For each residue a **Trajectory Dihedral Confidence (TDC)** score is computed from the circular spread of φ/ψ across the trajectory — narrow distributions give a high TDC and a strong restraint, broad distributions give a weak or no restraint:
+
+```
+TDC = 100 × (1 − σ_eff / σ_max)
+k   = k_max × exp(−σ_eff / σ_inflection)
+```
+
+The restrained structure is then minimised and briefly equilibrated (NVT) in GROMACS.
+
+```bash
+# 1. back-map the last CG frame
+cg2at_lite -c cg_lastframe.gro -a reference.pdb \
+    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-jul2022 -w tip3p
+
+# 2. refine using the CG trajectory
+cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc -step 10
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `-cg2at` | — | CG2AT output folder (required) |
+| `-tpr` | — | CG topology, `.tpr` or `.gro` (required) |
+| `-xtc` | — | CG trajectory (required) |
+| `-step` / `-b` / `-e` | `10` / `0` / end | Frame stride and time window (ps) |
+| `--aa-input` | `de_novo` | Start from `final_cg2at_de_novo.pdb` or `aligned` (`final_cg2at_aligned.pdb`) |
+| `--kmax` / `--sigma` / `--tdc-low` | `500` / `30` / `40` | Max force constant (kJ/mol/rad²), sigmoid inflection (°), min TDC to restrain |
+| `--dphi` | adaptive | Fixed restraint tolerance (°) |
+| `--nsteps-nvt` / `--temp` / `--no-nvt` | `50000` / `300` / off | NVT length, temperature, or minimisation only |
+| `--gmx` / `--ntmpi` / `--ntomp` | auto / `1` / `4` | GROMACS executable and threads |
+| `--cg-ref` | — | CG reference for backbone RMSD comparison |
+| `--no-plots` / `--keep-tmp` / `--prefix` | | Output control |
+
+Outputs are written to `FINAL/`: `final_cg2at_restrained.pdb`, `final_cg2at_restrained_TDC.pdb` (TDC in the B-factor column), `structure_quality_restrained.dat`, Ramachandran plots (`ramachandran_restrained.png`, `ramachandran_gly_pro_restrained.png`) and `cg2at_refine.log`. Ramachandran contours use the rama500 data of Lovell *et al.* (2003), bundled in `src/cg2at_lite/bin/rama_data/`.
+
+Worked examples (1UBQ, 2LZM, 3D4S, 3X29, 6TIQ) with inputs, commands and reference outputs are in [`example/`](example/).
 
 ---
 
@@ -489,7 +545,7 @@ W
 CG2AT2 can generate a position restraint `.itp` for any non-protein residue in the database:
 
 ```bash
-python cg2at.py -posre POPE -fg martini_2-2_charmm36
+cg2at_lite -posre POPE -fg martini_2-2_charmm36
 ```
 
 This creates `POPE_posre.itp` and adds the corresponding `#ifdef NP` block to the residue's `.itp` file.

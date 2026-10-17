@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "CG2AT-lite"
 #dynamic = ["version"]
-version = "0.2.6b0"
+version = "0.4.0"
 authors = [{name="Owen N. Vickery"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
 maintainers = [{name="Katarina E. Blow",email="katarina.blow@warwick.ac.uk"},{name="Phillip J. Stansfeld",email="phillip.stansfeld@warwick.ac.uk"}]
 description = "A lite version of CG2AT for functionality with CCD2MD."
@@ -17,8 +17,13 @@ license = "GPL-3.0"
 license-files = ["LICEN[CS]E*"]
 keywords = ["CG", "CCD2MD"]
 
+[project.optional-dependencies]
+refine = ["MDAnalysis >= 2.0", "matplotlib"]
+
 [project.scripts]
 cg2at_lite = "cg2at_lite.bin:cg2at.main"
+cg2at_refine = "cg2at_lite.bin.cg2at_refine:main"
+traj_dih_guide = "cg2at_lite.bin.traj_dih_guide:main"
 
 [project.urls]
 Homepage = "https://github.com/pstansfeld/cg2at-lite"
