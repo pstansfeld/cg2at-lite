@@ -19,6 +19,9 @@ from cg2at_lite.bin.exceptions import (
     TopologyError, GromacsError,
 )
 
+# Former force field names accepted by -ff (charmm36-jul2022 was renamed charmm36-cg2at)
+FORCEFIELD_ALIASES = {'charmm36-jul2022': 'charmm36-cg2at'}
+
 def check_alternate_resname(resname: str) -> str:
     if resname in g_var.alt_res_name:
         return g_var.alt_res_name[resname]
@@ -48,6 +51,11 @@ def forcefield_selection(test=False):
                 forcefield_number = g_var.forcefield_available.index(path_leaf(g_var.args.ff)[1]+'.ff')
             elif path_leaf(g_var.args.ff)[1] in g_var.forcefield_available:
                 forcefield_number = g_var.forcefield_available.index(path_leaf(g_var.args.ff)[1])
+            elif FORCEFIELD_ALIASES.get(path_leaf(g_var.args.ff)[1].replace('.ff', ''), '')+'.ff' in g_var.forcefield_available:
+                new_name = FORCEFIELD_ALIASES[path_leaf(g_var.args.ff)[1].replace('.ff', '')]
+                forcefield_number = g_var.forcefield_available.index(new_name+'.ff')
+                if not test:
+                    print('\nForce field '+g_var.args.ff+' is provided as '+new_name)
             else:
                 print('Cannot find force field: '+g_var.args.ff+'  please select one from below\n')   
         if 'forcefield_number' not in locals() and g_var.forcefield == '':

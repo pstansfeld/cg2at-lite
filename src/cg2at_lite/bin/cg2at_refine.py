@@ -11,7 +11,7 @@ Workflow
 --------
     # Step 1 — run cg2at-lite as normal
     cg2at.py -c last_frame.gro -fg martini_3-2_nextgen_protein_charmm36 \\
-             -ff charmm36-jul2022 -w tip3p
+             -ff charmm36-cg2at -w tip3p
 
     # Step 2 — refine with trajectory dihedral restraints
     python cg2at_refine.py \\

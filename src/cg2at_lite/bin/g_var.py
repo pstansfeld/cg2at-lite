@@ -21,7 +21,7 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
             'Examples:\n'
             '  Minimal:    cg2at.py -c system.gro\n'
             '  Recommended: cg2at.py -c system.gro -a protein.pdb\n'
-            '  Automated:  cg2at.py -c system.gro -a protein.pdb -ff charmm36-jul2022 -fg martini_2-2_charmm36 -w tip3p\n'
+            '  Automated:  cg2at.py -c system.gro -a protein.pdb -ff charmm36-cg2at -fg martini_2-2_charmm36 -w tip3p\n'
         ),
     )
 
@@ -46,7 +46,7 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
     # --- Force field and fragment library ---
     ff_grp = parser.add_argument_group('force field and fragment library')
     ff_grp.add_argument('-ff',
-        help='Force field to use, e.g. charmm36-jul2022. '
+        help='Force field to use, e.g. charmm36-cg2at. '
              'If omitted, CG2AT2 will prompt interactively.',
         metavar='NAME', type=str)
     ff_grp.add_argument('-fg',

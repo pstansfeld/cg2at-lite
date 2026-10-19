@@ -87,7 +87,7 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro
 **Fully automated run** (no interactive prompts):
 ```bash
 cg2at_lite -c cg_input.gro -a atomistic_input.gro \
-    -w tip3p -fg martini_2-2_charmm36 -ff charmm36-jul2022
+    -w tip3p -fg martini_2-2_charmm36 -ff charmm36-cg2at
 ```
 
 ---
@@ -120,7 +120,7 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 | `-swap` | `str` | — | Swap residues or beads during conversion |
 | `-box` | `float float float` | — | New box dimensions in Å (0 = keep original) |
 | `-w` | `str` | — | Water model (e.g. `tip3p`, `spce`) |
-| `-ff` | `str` | — | Force field (e.g. `charmm36-jul2022`) |
+| `-ff` | `str` | — | Force field (e.g. `charmm36-cg2at`) |
 | `-fg` | `str` | — | Fragment library (e.g. `martini_2-2_charmm36`) |
 | `-gmx` | `str` | `gmx` | GROMACS executable name |
 | `-messy` | flag | off | Keep all temporary files |
@@ -413,7 +413,7 @@ The restrained structure is then minimised and briefly equilibrated (NVT) in GRO
 ```bash
 # 1. back-map the last CG frame
 cg2at_lite -c cg_lastframe.gro -a reference.pdb \
-    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-jul2022 -w tip3p
+    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-cg2at -w tip3p
 
 # 2. refine using the CG trajectory
 cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc -step 10
