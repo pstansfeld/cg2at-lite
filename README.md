@@ -51,6 +51,8 @@ This provides three commands:
 | `cg2at_refine` | Standalone version of `-refine`, applied to an existing CG2AT output folder |
 | `traj_dih_guide` | Standalone φ/ψ analysis and dihedral restraint generation from a CG trajectory |
 
+`cg2at_refine` and `traj_dih_guide` need the `[refine]` extras.
+
 The scripts can also be run in place without installing, e.g. `python src/cg2at_lite/bin/cg2at.py ...`.
 
 ---
@@ -59,7 +61,7 @@ The scripts can also be run in place without installing, e.g. `python src/cg2at_
 
 | Category | Requirement |
 |---|---|
-| Python | v3.7 or higher |
+| Python | v3.9 or higher (required by NumPy 1.26.4) |
 | GROMACS | v5 or higher (2020+ for `-refine`) |
 | NumPy | v1.26.4 or higher |
 | SciPy | any recent version |
@@ -106,10 +108,9 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 |---|---|---|---|
 | `-a` | `pdb/gro/tpr` | — | Atomistic input coordinates |
 | `-d` | `0:2 1:3` | — | Duplicate atomistic chains (chain:copies) |
-| `-loc` | `str` | `CG2AT_<timestamp>` | Output folder name |
+| `-loc` | `str` | `CG2AT_<timestamp>` | Output folder (relative or absolute path) |
 | `-o` | `all/align/de_novo/none` | `all` | Output conversion mode |
 | `-group` | `0,1 2,3 / all / chain` | — | Rigid-body fitting groups |
-| `-ncpus` | `int` | 8 (or max) | Number of CPU cores |
 | `-mod` | flag | off | Treat fragments individually (disable grouping) |
 | `-sf` | `float` | `0.9` | Fragment scale factor before fitting |
 | `-cys` | `float` | `7.0` | Disulphide bond search cutoff (Å) |
@@ -120,12 +121,12 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 | `-swap` | `str` | — | Swap residues or beads during conversion |
 | `-box` | `float float float` | — | New box dimensions in Å (0 = keep original) |
 | `-w` | `str` | — | Water model (e.g. `tip3p`, `spce`) |
-| `-ff` | `str` | — | Force field (e.g. `charmm36-cg2at`) |
-| `-fg` | `str` | — | Fragment library (e.g. `martini_2-2_charmm36`) |
+| `-ff` | `str` | — | Force field (`charmm36-cg2at`; `charmm36-jul2022` is accepted as an alias) |
+| `-fg` | `str` | — | Fragment library, or several in priority order (e.g. `martini_2-2_charmm36`) |
 | `-gmx` | `str` | `gmx` | GROMACS executable name |
 | `-messy` | flag | off | Keep all temporary files |
 | `-silent` | flag | off | Auto-accept disulphide bond suggestions |
-| `-disre` | flag | off | Disable backbone distance restraint matrix |
+| `-disre` | flag | off | Apply backbone distance restraint matrix during NVT (requires `-a`) |
 | `-ov` | `float` | `0.3` | Minimum allowed atom overlap (Å) |
 | `-posre` | `str` | — | Generate position restraint file for a residue |
 | `-compare` | `str` | — | Compare an `.itp` file against the database |
@@ -354,7 +355,7 @@ Box resizing is currently supported for **cubic boxes only**. Dimensions are in 
 
 ### Distance Restraint Matrix
 
-When an atomistic structure is supplied, CG2AT2 generates a backbone hydrogen-bond distance restraint matrix that is applied during NVT. This refines backbone atom orientations with minimal effect on overall structure. Disable with:
+When an atomistic structure is supplied, CG2AT2 generates a backbone hydrogen-bond distance restraint matrix. This refines backbone atom orientations with minimal effect on overall structure. Apply it during the de novo NVT with:
 
 ```bash
 -disre
@@ -378,6 +379,7 @@ CG2AT2 skips any step for which output files already exist, so a failed run can 
 
 ```bash
 -loc CG2AT   # Use a fixed directory name instead of a timestamp
+-loc /full/path/CG2AT   # Absolute paths are also accepted
 ```
 
 ---
@@ -388,7 +390,6 @@ CG2AT2 skips any step for which output files already exist, so a failed run can 
 -gmx gmx_mod     # Use a specific GROMACS binary
 -messy           # Keep all temporary files
 -vs              # Apply virtual sites to protein hydrogen atoms
--ncpus 4         # Limit to 4 CPU cores (default: 8 or system max)
 -v / -vv / -vvv  # Increase verbosity
 -info            # List available force fields and fragment libraries
 -info -fg martini_2-2_charmm36   # List residues in a specific library
@@ -411,12 +412,8 @@ k   = k_max × exp(−σ / σ_inflection)
 
 ```bash
 cg2at_lite -c cg_lastframe.gro -a reference.pdb \
-    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-jul2022 -w tip3p \
+    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-cg2at -w tip3p \
     -refine cg_traj.xtc -refine_top cg.tpr
-    -fg martini_3-2_nextgen_protein_charmm36 -ff charmm36-cg2at -w tip3p
-
-# 2. refine using the CG trajectory
-cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc -step 10
 ```
 
 How it fits into the pipeline:
@@ -439,16 +436,16 @@ How it fits into the pipeline:
 
 The standalone `cg2at_refine` command applies the same restraints as a separate minimisation + NVT to an existing CG2AT output folder (`cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc`).
 
-Worked examples (1UBQ, 2LZM, 3D4S, 3X29, 6TIQ) with inputs, commands and reference outputs are in [`example/`](example/).
+Worked examples (1UBQ, 2LZM, 3D4S, 3X29, 6TIQ) with inputs, commands and reference outputs are in [`example/`](example/) (the CG trajectories are not included). `example/4QWP_oldM3/` is a CG input built with the old Martini 3 backbone beads, for checking backward compatibility.
 
 ---
 
 ## Database Structure
 
 ```
-database/
+src/cg2at_lite/
 ├── forcefields/
-│   └── charmm36.ff/          # Standard GROMACS force field directory
+│   └── charmm36-cg2at.ff/    # Standard GROMACS force field directory
 │
 └── fragments/
     └── <forcefield_type>/    # e.g. martini_2-2_charmm36
@@ -473,6 +470,8 @@ database/
 ```
 
 > **Tip:** Prefix any file or folder name with `_` to prevent CG2AT2 from reading it.
+
+The bundled fragment libraries are `martini_2-0_charmm36`, `martini_2-2_charmm36`, `martini_3-0_charmm36`, `martini_3-1_new_lipidome_charmm36` and `martini_3-2_nextgen_protein_charmm36`. The last is for the Martini 3 explicit-backbone (N/CA/C/O) protein model and contains protein fragments only, so combine it with another library for the rest of the system, e.g. `-fg martini_3-2_nextgen_protein_charmm36 martini_3-1_new_lipidome_charmm36`.
 
 ---
 
