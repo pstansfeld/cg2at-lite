@@ -27,7 +27,7 @@ from cg2at_lite.bin.exceptions import CG2ATError
 def _run() -> None:
     """Core pipeline.  Separated from main() so it can be wrapped cleanly."""
 
-    g_var.script_update = '17-10-2026'
+    g_var.script_update = '19-10-2026'
     g_var.other = {'DA': 'A', 'DG': 'G', 'DC': 'C', 'DT': 'T',
                    'DAX': 'A', 'DGX': 'G', 'DCX': 'C', 'DTX': 'T'}
 
