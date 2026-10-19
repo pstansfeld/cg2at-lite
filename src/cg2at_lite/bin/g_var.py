@@ -136,8 +136,8 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
         help='Add virtual sites to protein hydrogen atoms.',
         action='store_true')
     tune_grp.add_argument('-disre',
-        help='Apply a backbone H-bond distance restraint matrix during NVT '
-             '(requires -a; on by default when an atomistic structure is supplied).',
+        help='Apply a backbone H-bond distance restraint matrix during the de novo NVT. '
+             'Off by default; applied only when -disre is given and -a is supplied.',
         action='store_true')
 
     # --- Trajectory-guided dihedral restraints ---

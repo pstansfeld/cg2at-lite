@@ -126,7 +126,7 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 | `-gmx` | `str` | `gmx` | GROMACS executable name |
 | `-messy` | flag | off | Keep all temporary files |
 | `-silent` | flag | off | Auto-accept disulphide bond suggestions |
-| `-disre` | flag | off | Apply backbone distance restraint matrix during NVT (requires `-a`) |
+| `-disre` | flag | off | Apply backbone distance restraint matrix during the de novo NVT (requires `-a`) |
 | `-ov` | `float` | `0.3` | Minimum allowed atom overlap (Å) |
 | `-posre` | `str` | — | Generate position restraint file for a residue |
 | `-compare` | `str` | — | Compare an `.itp` file against the database |
@@ -355,7 +355,7 @@ Box resizing is currently supported for **cubic boxes only**. Dimensions are in 
 
 ### Distance Restraint Matrix
 
-When an atomistic structure is supplied, CG2AT2 generates a backbone hydrogen-bond distance restraint matrix. This refines backbone atom orientations with minimal effect on overall structure. Apply it during the de novo NVT with:
+When an atomistic structure is supplied, CG2AT2 generates a backbone hydrogen-bond distance restraint matrix. This refines backbone atom orientations with minimal effect on overall structure. It is off by default; apply it during the de novo NVT with:
 
 ```bash
 -disre
