@@ -1,149 +1,139 @@
-;
-;	File '../cg2at-ccd2md/database/fragments/martini_3-1_new_lipidome_charmm36/non_protein/KCER/KCER.top' was generated
-;	By user: mztrxr (16752)
-;	On host: srgwzze.scrtp.warwick.ac.uk
-;	At date: Fri Jul 17 09:43:09 2026
-;
-;	This is a standalone topology file
-;
-;	Created by:
-;	              :-) GROMACS - gmx pdb2gmx, 2025.4-conda_forge (-:
-;	
-;	Executable:   /storage/chem/lfsmgr/SRG/mambaforge/envs/gmx2025.4/bin.AVX2_256/gmx
-;	Data prefix:  /storage/chem/lfsmgr/SRG/mambaforge/envs/gmx2025.4
-;	Working dir:  /home/lifesci/mztrxr/Documents/CCD2MD/CCD2AT/add_molecules
-;	Command line:
-;	  gmx pdb2gmx -ff charmm36-ccd2md -water none -f ../../charmm-gui-lipids-sterols-detergents/kcer.pdb -i ../cg2at-ccd2md/database/fragments/martini_3-1_new_lipidome_charmm36/non_protein/KCER/KCER_posre.itp -p ../cg2at-ccd2md/database/fragments/martini_3-1_new_lipidome_charmm36/non_protein/KCER/KCER.top
-;	Force field was read from current directory or a relative path - path added.
-;
-
-; Include forcefield parameters
-#include "./charmm36-ccd2md.ff/forcefield.itp"
-
 [ moleculetype ]
 ; Name            nrexcl
-Other               3
+XCER                3
 
 [ atoms ]
 ;   nr       type  resnr residue  atom   cgnr     charge       mass  typeB    chargeB      massB
-; residue   1 KCER rtp KCER q  0.0
-     1        OHL      1   KCER     O1      1      -0.69    15.9994
-     2        HOL      1   KCER    HO1      1        0.3      1.008
-     3       CTO2      1   KCER    C1S      1       0.49     12.011
-     4       HAL2      1   KCER    H1S      1      -0.05      1.008
-     5       HAL2      1   KCER    H1T      1      -0.05      1.008
-     6        NHL      1   KCER     NF      2       -0.7     14.007
-     7          H      1   KCER    HNF      2       0.35      1.008
-     8       CTL1      1   KCER    C2S      2        0.3     12.011
-     9       HAL1      1   KCER    H2S      2       0.05      1.008
-    10       CTO1      1   KCER    C3S      3        0.5     12.011
-    11       HAL1      1   KCER    H3S      3      -0.11      1.008
-    12        OHL      1   KCER     O3      3      -0.69    15.9994
-    13        HOL      1   KCER    HO3      3        0.3      1.008
-    14       CEL3      1   KCER    C4S      4      -0.15     12.011
-    15       HEL1      1   KCER    H4S      4       0.15      1.008
-    16       CEL3      1   KCER    C5S      5      -0.15     12.011
-    17       HEL1      1   KCER    H5S      5       0.15      1.008
-    18       CTL2      1   KCER    C6S      6      -0.18     12.011
-    19       HAL2      1   KCER    H6S      6       0.09      1.008
-    20       HAL2      1   KCER    H6T      6       0.09      1.008
-    21       CTL2      1   KCER    C7S      7      -0.18     12.011
-    22       HAL2      1   KCER    H7S      7       0.09      1.008
-    23       HAL2      1   KCER    H7T      7       0.09      1.008
-    24       CTL2      1   KCER    C8S      8      -0.18     12.011
-    25       HAL2      1   KCER    H8S      8       0.09      1.008
-    26       HAL2      1   KCER    H8T      8       0.09      1.008
-    27       CTL2      1   KCER    C9S      9      -0.18     12.011
-    28       HAL2      1   KCER    H9S      9       0.09      1.008
-    29       HAL2      1   KCER    H9T      9       0.09      1.008
-    30       CTL2      1   KCER   C10S     10      -0.18     12.011
-    31       HAL2      1   KCER   H10S     10       0.09      1.008
-    32       HAL2      1   KCER   H10T     10       0.09      1.008
-    33       CTL2      1   KCER   C11S     11      -0.18     12.011
-    34       HAL2      1   KCER   H11S     11       0.09      1.008
-    35       HAL2      1   KCER   H11T     11       0.09      1.008
-    36       CTL2      1   KCER   C12S     12      -0.18     12.011
-    37       HAL2      1   KCER   H12S     12       0.09      1.008
-    38       HAL2      1   KCER   H12T     12       0.09      1.008
-    39       CTL2      1   KCER   C13S     13      -0.18     12.011
-    40       HAL2      1   KCER   H13S     13       0.09      1.008
-    41       HAL2      1   KCER   H13T     13       0.09      1.008
-    42       CTL2      1   KCER   C14S     14      -0.18     12.011
-    43       HAL2      1   KCER   H14S     14       0.09      1.008
-    44       HAL2      1   KCER   H14T     14       0.09      1.008
-    45       CTL2      1   KCER   C15S     15      -0.18     12.011
-    46       HAL2      1   KCER   H15S     15       0.09      1.008
-    47       HAL2      1   KCER   H15T     15       0.09      1.008
-    48       CTL2      1   KCER   C16S     16      -0.18     12.011
-    49       HAL2      1   KCER   H16S     16       0.09      1.008
-    50       HAL2      1   KCER   H16T     16       0.09      1.008
-    51       CTL2      1   KCER   C17S     17      -0.18     12.011
-    52       HAL2      1   KCER   H17S     17       0.09      1.008
-    53       HAL2      1   KCER   H17T     17       0.09      1.008
-    54       CTL3      1   KCER   C18S     18      -0.27     12.011
-    55       HAL3      1   KCER   H18S     18       0.09      1.008
-    56       HAL3      1   KCER   H18T     18       0.09      1.008
-    57       HAL3      1   KCER   H18U     18       0.09      1.008
-    58          C      1   KCER    C1F     19       0.55     12.011
-    59          O      1   KCER     OF     19       -0.6    15.9994
-    60       CTL2      1   KCER    C2F     19      -0.07     12.011
-    61       HAL2      1   KCER    H2F     19       0.06      1.008
-    62       HAL2      1   KCER    H2G     19       0.06      1.008
-    63       CTL2      1   KCER    C3F     20      -0.18     12.011
-    64       HAL2      1   KCER    H3F     20       0.09      1.008
-    65       HAL2      1   KCER    H3G     20       0.09      1.008
-    66       CTL2      1   KCER    C4F     21      -0.18     12.011
-    67       HAL2      1   KCER    H4F     21       0.09      1.008
-    68       HAL2      1   KCER    H4G     21       0.09      1.008
-    69       CTL2      1   KCER    C5F     22      -0.18     12.011
-    70       HAL2      1   KCER    H5F     22       0.09      1.008
-    71       HAL2      1   KCER    H5G     22       0.09      1.008
-    72       CTL2      1   KCER    C6F     23      -0.18     12.011
-    73       HAL2      1   KCER    H6F     23       0.09      1.008
-    74       HAL2      1   KCER    H6G     23       0.09      1.008
-    75       CTL2      1   KCER    C7F     24      -0.18     12.011
-    76       HAL2      1   KCER    H7F     24       0.09      1.008
-    77       HAL2      1   KCER    H7G     24       0.09      1.008
-    78       CTL2      1   KCER    C8F     25      -0.18     12.011
-    79       HAL2      1   KCER    H8F     25       0.09      1.008
-    80       HAL2      1   KCER    H8G     25       0.09      1.008
-    81       CTL2      1   KCER    C9F     26      -0.18     12.011
-    82       HAL2      1   KCER    H9F     26       0.09      1.008
-    83       HAL2      1   KCER    H9G     26       0.09      1.008
-    84       CTL2      1   KCER   C10F     27      -0.18     12.011
-    85       HAL2      1   KCER   H10F     27       0.09      1.008
-    86       HAL2      1   KCER   H10G     27       0.09      1.008
-    87       CTL2      1   KCER   C11F     28      -0.18     12.011
-    88       HAL2      1   KCER   H11F     28       0.09      1.008
-    89       HAL2      1   KCER   H11G     28       0.09      1.008
-    90       CTL2      1   KCER   C12F     29      -0.18     12.011
-    91       HAL2      1   KCER   H12F     29       0.09      1.008
-    92       HAL2      1   KCER   H12G     29       0.09      1.008
-    93       CTL2      1   KCER   C13F     30      -0.18     12.011
-    94       HAL2      1   KCER   H13F     30       0.09      1.008
-    95       HAL2      1   KCER   H13G     30       0.09      1.008
-    96       CTL2      1   KCER   C14F     31      -0.18     12.011
-    97       HAL2      1   KCER   H14F     31       0.09      1.008
-    98       HAL2      1   KCER   H14G     31       0.09      1.008
-    99       CTL2      1   KCER   C15F     32      -0.18     12.011
-   100       HAL2      1   KCER   H15F     32       0.09      1.008
-   101       HAL2      1   KCER   H15G     32       0.09      1.008
-   102       CTL2      1   KCER   C16F     33      -0.18     12.011
-   103       HAL2      1   KCER   H16F     33       0.09      1.008
-   104       HAL2      1   KCER   H16G     33       0.09      1.008
-   105       CTL2      1   KCER   C17F     34      -0.18     12.011
-   106       HAL2      1   KCER   H17F     34       0.09      1.008
-   107       HAL2      1   KCER   H17G     34       0.09      1.008
-   108       CTL2      1   KCER   C18F     35      -0.18     12.011
-   109       HAL2      1   KCER   H18F     35       0.09      1.008
-   110       HAL2      1   KCER   H18G     35       0.09      1.008
-   111       CTL2      1   KCER   C19F     36      -0.18     12.011
-   112       HAL2      1   KCER   H19F     36       0.09      1.008
-   113       HAL2      1   KCER   H19G     36       0.09      1.008
-   114       CTL3      1   KCER   C20F     37      -0.27     12.011
-   115       HAL3      1   KCER   H20F     37       0.09      1.008
-   116       HAL3      1   KCER   H20G     37       0.09      1.008
-   117       HAL3      1   KCER   H20H     37       0.09      1.008   ; qtot 0
+; residue   1 XCER rtp XCER q  0.0
+     1        OHL      1   XCER     O1      1      -0.69    15.9994
+     2        HOL      1   XCER    HO1      1        0.3      1.008
+     3       CTO2      1   XCER    C1S      1       0.49     12.011
+     4       HAL2      1   XCER    H1S      1      -0.05      1.008
+     5       HAL2      1   XCER    H1T      1      -0.05      1.008
+     6        NHL      1   XCER     NF      2       -0.7     14.007
+     7          H      1   XCER    HNF      2       0.35      1.008
+     8       CTL1      1   XCER    C2S      2        0.3     12.011
+     9       HAL1      1   XCER    H2S      2       0.05      1.008
+    10       CTO1      1   XCER    C3S      3        0.5     12.011
+    11       HAL1      1   XCER    H3S      3      -0.11      1.008
+    12        OHL      1   XCER     O3      3      -0.69    15.9994
+    13        HOL      1   XCER    HO3      3        0.3      1.008
+    14       CEL3      1   XCER    C4S      4      -0.15     12.011
+    15       HEL1      1   XCER    H4S      4       0.15      1.008
+    16       CEL3      1   XCER    C5S      5      -0.15     12.011
+    17       HEL1      1   XCER    H5S      5       0.15      1.008
+    18       CTL2      1   XCER    C6S      6      -0.18     12.011
+    19       HAL2      1   XCER    H6S      6       0.09      1.008
+    20       HAL2      1   XCER    H6T      6       0.09      1.008
+    21       CTL2      1   XCER    C7S      7      -0.18     12.011
+    22       HAL2      1   XCER    H7S      7       0.09      1.008
+    23       HAL2      1   XCER    H7T      7       0.09      1.008
+    24       CTL2      1   XCER    C8S      8      -0.18     12.011
+    25       HAL2      1   XCER    H8S      8       0.09      1.008
+    26       HAL2      1   XCER    H8T      8       0.09      1.008
+    27       CTL2      1   XCER    C9S      9      -0.18     12.011
+    28       HAL2      1   XCER    H9S      9       0.09      1.008
+    29       HAL2      1   XCER    H9T      9       0.09      1.008
+    30       CTL2      1   XCER   C10S     10      -0.18     12.011
+    31       HAL2      1   XCER   H10S     10       0.09      1.008
+    32       HAL2      1   XCER   H10T     10       0.09      1.008
+    33       CTL2      1   XCER   C11S     11      -0.18     12.011
+    34       HAL2      1   XCER   H11S     11       0.09      1.008
+    35       HAL2      1   XCER   H11T     11       0.09      1.008
+    36       CTL2      1   XCER   C12S     12      -0.18     12.011
+    37       HAL2      1   XCER   H12S     12       0.09      1.008
+    38       HAL2      1   XCER   H12T     12       0.09      1.008
+    39       CTL2      1   XCER   C13S     13      -0.18     12.011
+    40       HAL2      1   XCER   H13S     13       0.09      1.008
+    41       HAL2      1   XCER   H13T     13       0.09      1.008
+    42       CTL2      1   XCER   C14S     14      -0.18     12.011
+    43       HAL2      1   XCER   H14S     14       0.09      1.008
+    44       HAL2      1   XCER   H14T     14       0.09      1.008
+    45       CTL2      1   XCER   C15S     15      -0.18     12.011
+    46       HAL2      1   XCER   H15S     15       0.09      1.008
+    47       HAL2      1   XCER   H15T     15       0.09      1.008
+    48       CTL2      1   XCER   C16S     16      -0.18     12.011
+    49       HAL2      1   XCER   H16S     16       0.09      1.008
+    50       HAL2      1   XCER   H16T     16       0.09      1.008
+    51       CTL2      1   XCER   C17S     17      -0.18     12.011
+    52       HAL2      1   XCER   H17S     17       0.09      1.008
+    53       HAL2      1   XCER   H17T     17       0.09      1.008
+    54       CTL3      1   XCER   C18S     18      -0.27     12.011
+    55       HAL3      1   XCER   H18S     18       0.09      1.008
+    56       HAL3      1   XCER   H18T     18       0.09      1.008
+    57       HAL3      1   XCER   H18U     18       0.09      1.008
+    58          C      1   XCER    C1F     19       0.55     12.011
+    59          O      1   XCER     OF     19       -0.6    15.9994
+    60       CTL2      1   XCER    C2F     19      -0.07     12.011
+    61       HAL2      1   XCER    H2F     19       0.06      1.008
+    62       HAL2      1   XCER    H2G     19       0.06      1.008
+    63       CTL2      1   XCER    C3F     20      -0.18     12.011
+    64       HAL2      1   XCER    H3F     20       0.09      1.008
+    65       HAL2      1   XCER    H3G     20       0.09      1.008
+    66       CTL2      1   XCER    C4F     21      -0.18     12.011
+    67       HAL2      1   XCER    H4F     21       0.09      1.008
+    68       HAL2      1   XCER    H4G     21       0.09      1.008
+    69       CTL2      1   XCER    C5F     22      -0.18     12.011
+    70       HAL2      1   XCER    H5F     22       0.09      1.008
+    71       HAL2      1   XCER    H5G     22       0.09      1.008
+    72       CTL2      1   XCER    C6F     23      -0.18     12.011
+    73       HAL2      1   XCER    H6F     23       0.09      1.008
+    74       HAL2      1   XCER    H6G     23       0.09      1.008
+    75       CTL2      1   XCER    C7F     24      -0.18     12.011
+    76       HAL2      1   XCER    H7F     24       0.09      1.008
+    77       HAL2      1   XCER    H7G     24       0.09      1.008
+    78       CTL2      1   XCER    C8F     25      -0.18     12.011
+    79       HAL2      1   XCER    H8F     25       0.09      1.008
+    80       HAL2      1   XCER    H8G     25       0.09      1.008
+    81       CTL2      1   XCER    C9F     26      -0.18     12.011
+    82       HAL2      1   XCER    H9F     26       0.09      1.008
+    83       HAL2      1   XCER    H9G     26       0.09      1.008
+    84       CTL2      1   XCER   C10F     27      -0.18     12.011
+    85       HAL2      1   XCER   H10F     27       0.09      1.008
+    86       HAL2      1   XCER   H10G     27       0.09      1.008
+    87       CTL2      1   XCER   C11F     28      -0.18     12.011
+    88       HAL2      1   XCER   H11F     28       0.09      1.008
+    89       HAL2      1   XCER   H11G     28       0.09      1.008
+    90       CTL2      1   XCER   C12F     29      -0.18     12.011
+    91       HAL2      1   XCER   H12F     29       0.09      1.008
+    92       HAL2      1   XCER   H12G     29       0.09      1.008
+    93       CTL2      1   XCER   C13F     30      -0.18     12.011
+    94       HAL2      1   XCER   H13F     30       0.09      1.008
+    95       HAL2      1   XCER   H13G     30       0.09      1.008
+    96       CTL2      1   XCER   C14F     31      -0.18     12.011
+    97       HAL2      1   XCER   H14F     31       0.09      1.008
+    98       HAL2      1   XCER   H14G     31       0.09      1.008
+    99       CTL2      1   XCER   C15F     32      -0.18     12.011
+   100       HAL2      1   XCER   H15F     32       0.09      1.008
+   101       HAL2      1   XCER   H15G     32       0.09      1.008
+   102       CTL2      1   XCER   C16F     33      -0.18     12.011
+   103       HAL2      1   XCER   H16F     33       0.09      1.008
+   104       HAL2      1   XCER   H16G     33       0.09      1.008
+   105       CTL2      1   XCER   C17F     34      -0.18     12.011
+   106       HAL2      1   XCER   H17F     34       0.09      1.008
+   107       HAL2      1   XCER   H17G     34       0.09      1.008
+   108       CTL2      1   XCER   C18F     35      -0.18     12.011
+   109       HAL2      1   XCER   H18F     35       0.09      1.008
+   110       HAL2      1   XCER   H18G     35       0.09      1.008
+   111       CTL2      1   XCER   C19F     36      -0.18     12.011
+   112       HAL2      1   XCER   H19F     36       0.09      1.008
+   113       HAL2      1   XCER   H19G     36       0.09      1.008
+   114       CTL2      1   XCER   C20F     37      -0.18     12.011
+   115       HAL2      1   XCER   H20F     37       0.09      1.008
+   116       HAL2      1   XCER   H20G     37       0.09      1.008
+   117       CTL2      1   XCER   C21F     38      -0.18     12.011
+   118       HAL2      1   XCER   H21F     38       0.09      1.008
+   119       HAL2      1   XCER   H21G     38       0.09      1.008
+   120       CTL2      1   XCER   C22F     39      -0.18     12.011
+   121       HAL2      1   XCER   H22F     39       0.09      1.008
+   122       HAL2      1   XCER   H22G     39       0.09      1.008
+   123       CTL2      1   XCER   C23F     40      -0.18     12.011
+   124       HAL2      1   XCER   H23F     40       0.09      1.008
+   125       HAL2      1   XCER   H23G     40       0.09      1.008
+   126       CTL3      1   XCER   C24F     41      -0.27     12.011
+   127       HAL3      1   XCER   H24F     41       0.09      1.008
+   128       HAL3      1   XCER   H24G     41       0.09      1.008
+   129       HAL3      1   XCER   H24H     41       0.09      1.008   ; qtot 0
 
 [ bonds ]
 ;  ai    aj funct            c0            c1            c2            c3
@@ -263,6 +253,18 @@ Other               3
   114   115     1 
   114   116     1 
   114   117     1 
+  117   118     1 
+  117   119     1 
+  117   120     1 
+  120   121     1 
+  120   122     1 
+  120   123     1 
+  123   124     1 
+  123   125     1 
+  123   126     1 
+  126   127     1 
+  126   128     1 
+  126   129     1 
 
 [ pairs ]
 ;  ai    aj funct            c0            c1            c2            c3
@@ -586,12 +588,48 @@ Other               3
   110   112     1 
   110   113     1 
   110   114     1 
+  111   118     1 
+  111   119     1 
+  111   120     1 
   112   115     1 
   112   116     1 
   112   117     1 
   113   115     1 
   113   116     1 
   113   117     1 
+  114   121     1 
+  114   122     1 
+  114   123     1 
+  115   118     1 
+  115   119     1 
+  115   120     1 
+  116   118     1 
+  116   119     1 
+  116   120     1 
+  117   124     1 
+  117   125     1 
+  117   126     1 
+  118   121     1 
+  118   122     1 
+  118   123     1 
+  119   121     1 
+  119   122     1 
+  119   123     1 
+  120   127     1 
+  120   128     1 
+  120   129     1 
+  121   124     1 
+  121   125     1 
+  121   126     1 
+  122   124     1 
+  122   125     1 
+  122   126     1 
+  124   127     1 
+  124   128     1 
+  124   129     1 
+  125   127     1 
+  125   128     1 
+  125   129     1 
 
 [ angles ]
 ;  ai    aj    ak funct            c0            c1            c2            c3
@@ -819,6 +857,30 @@ Other               3
   115   114   116     5 
   115   114   117     5 
   116   114   117     5 
+  114   117   118     5 
+  114   117   119     5 
+  114   117   120     5 
+  118   117   119     5 
+  118   117   120     5 
+  119   117   120     5 
+  117   120   121     5 
+  117   120   122     5 
+  117   120   123     5 
+  121   120   122     5 
+  121   120   123     5 
+  122   120   123     5 
+  120   123   124     5 
+  120   123   125     5 
+  120   123   126     5 
+  124   123   125     5 
+  124   123   126     5 
+  125   123   126     5 
+  123   126   127     5 
+  123   126   128     5 
+  123   126   129     5 
+  127   126   128     5 
+  127   126   129     5 
+  128   126   129     5 
 
 [ dihedrals ]
 ;  ai    aj    ak    al funct            c0            c1            c2            c3            c4            c5
@@ -1148,6 +1210,42 @@ Other               3
   113   111   114   115     9 
   113   111   114   116     9 
   113   111   114   117     9 
+  111   114   117   118     9 
+  111   114   117   119     9 
+  111   114   117   120     9 
+  115   114   117   118     9 
+  115   114   117   119     9 
+  115   114   117   120     9 
+  116   114   117   118     9 
+  116   114   117   119     9 
+  116   114   117   120     9 
+  114   117   120   121     9 
+  114   117   120   122     9 
+  114   117   120   123     9 
+  118   117   120   121     9 
+  118   117   120   122     9 
+  118   117   120   123     9 
+  119   117   120   121     9 
+  119   117   120   122     9 
+  119   117   120   123     9 
+  117   120   123   124     9 
+  117   120   123   125     9 
+  117   120   123   126     9 
+  121   120   123   124     9 
+  121   120   123   125     9 
+  121   120   123   126     9 
+  122   120   123   124     9 
+  122   120   123   125     9 
+  122   120   123   126     9 
+  120   123   126   127     9 
+  120   123   126   128     9 
+  120   123   126   129     9 
+  124   123   126   127     9 
+  124   123   126   128     9 
+  124   123   126   129     9 
+  125   123   126   127     9 
+  125   123   126   128     9 
+  125   123   126   129     9 
 
 [ dihedrals ]
 ;  ai    aj    ak    al funct            c0            c1            c2            c3
@@ -1156,13 +1254,6 @@ Other               3
 
 ; Include Position restraint file
 #ifdef POSRES
-#include "../cg2at-ccd2md/database/fragments/martini_3-1_new_lipidome_charmm36/non_protein/KCER/KCER_posre.itp"
+#include "XCER_posre.itp"
 #endif
 
-[ system ]
-; Name
-Protein
-
-[ molecules ]
-; Compound        #mols
-Other               1
