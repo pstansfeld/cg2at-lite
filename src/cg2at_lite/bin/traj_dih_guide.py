@@ -22,7 +22,7 @@ Workflow
 --------
     # Step 1 — run cg2at-lite de novo (no -a flag)
     cg2at.py -c last_frame.gro -fg martini_3-2_nextgen_protein_charmm36 \\
-             -ff charmm36-jul2022 -w tip3p
+             -ff charmm36-cg2at -w tip3p
 
     # Step 2 — generate dihedral restraints
     python traj_dih_guide.py --restraints \\
