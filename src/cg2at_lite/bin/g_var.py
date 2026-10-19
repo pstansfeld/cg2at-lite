@@ -190,10 +190,10 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
     ### CG2AT folder locations
 
     start_dir       = os.getcwd()+'/'  ### initial working directory
-    working_dir     = os.getcwd()+'/'+args.loc+'/'   ### working directory 
-    final_dir       = os.getcwd()+'/'+args.loc+'/FINAL/'  ### final directory for run files
-    input_directory = os.getcwd()+'/'+args.loc+'/INPUT/'  ### contains input run files
-    merged_directory = os.getcwd()+'/'+args.loc+'/MERGED/'  ### contains run files
+    working_dir     = os.path.join(os.getcwd(), args.loc, '')   ### working directory (-loc may be relative or absolute)
+    final_dir       = working_dir+'FINAL/'  ### final directory for run files
+    input_directory = working_dir+'INPUT/'  ### contains input run files
+    merged_directory = working_dir+'MERGED/'  ### contains run files
     scripts_dir     = os.path.dirname(os.path.realpath(__file__))+'/' ### contains script files
     database_dir    = str(Path(*Path(scripts_dir).parts[:-1]))+'/' ### contains database files
     box_vec = ''
