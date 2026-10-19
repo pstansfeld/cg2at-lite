@@ -14,14 +14,15 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
         prog='CG2AT2',
         description=(
             'CG2AT2: fragment-based back-mapping of coarse-grained systems to atomistic resolution.\n'
-            'Requires a GROMACS installation. Full documentation: https://github.com/owenvickery/cg2at'
+            'Requires a GROMACS installation. Documentation: https://github.com/pstansfeld/cg2at-lite\n'
+            'Based on the original CG2AT by Owen Vickery: https://github.com/owenvickery/cg2at'
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             'Examples:\n'
-            '  Minimal:    cg2at.py -c system.gro\n'
-            '  Recommended: cg2at.py -c system.gro -a protein.pdb\n'
-            '  Automated:  cg2at.py -c system.gro -a protein.pdb -ff charmm36-cg2at -fg martini_2-2_charmm36 -w tip3p\n'
+            '  Minimal:     cg2at_lite -c system.gro\n'
+            '  Recommended: cg2at_lite -c system.gro -a protein.pdb\n'
+            '  Automated:   cg2at_lite -c system.gro -a protein.pdb -ff charmm36-cg2at -fg martini_2-2_charmm36 -w tip3p\n'
         ),
     )
 

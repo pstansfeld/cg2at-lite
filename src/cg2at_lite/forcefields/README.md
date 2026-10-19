@@ -1,52 +1,16 @@
-Note:
-For the amber99sb-ildn forcefield the ion paramters have been updated to those from Joung et al 2008.
-This is prevent the ions aggregation at higher salt concentrations.
-A copy of this paper can be found within amber99sb-ildn.ff and amber99sb-ildn_slipids.ff folders. 
+Force fields shipped with CG2AT-lite:
 
-- amber99sb-ildn.ff         = original parameters
-- amber99sb-ildn-tip3p.ff   = updated for tip3p water model
-- amber99sb-ildn-spc.ff     = updated for spc/e water model
+- charmm36-cg2at.ff = CHARMM36m protein / CHARMM36 lipids (July 2022 toppar), ported to GROMACS with charmm2gmx.
+                      See charmm36-cg2at.ff/forcefield.doc for the source files and references.
 
-Updated with stockholm lipids
+Select it with -ff charmm36-cg2at. The former name charmm36-jul2022 is accepted as an alias
+(a charmm36-jul2022.ff folder exists only inside a fragment library, not here).
 
-- amber99sb-ildn_slipids.ff         = original parameters with slipids parameters added
-- amber99sb-ildn_slipids_tip3p.ff   = updated for tip3p water model
-- amber99sb-ildn_slipids_spc.ff     = updated for spc/e water model
+Adding a force field:
 
-
-Amber14_OL15.ff downloaded from https://www.gromacs.org/Downloads/User_contributions/Force_fields
-Amber OL15 force field for DNA and OL3 (chiOL3) force field for RNA, combined with ff14SB protein force field. More details on ffol.upol.cz. Contributed by Petr Jurecka.
-Zgarbova, M.; Sponer, J.; Otyepka, M.; Cheatham, T. E.; Galindo-Murillo, R.; Jurecka, P., Refinement of the Sugar-Phosphate Backbone Torsion Beta for the AMBER Force Fields Improves the Description of Z-DNA and B-DNA. J. Chem. Theory Comput. 2015, 11 (12), 5723-5736
-
-
-Amber14_OL21.ff downloaded from https://fch.upol.cz/ff_ol/
-
-OL21 is a 2021 DNA force field, so far tested on B-DNA and Z-DNA. 
-
-Zgarbova, M.; Sponer, J.; Jurecka, P., Z-DNA as a Touchstone for Additive Empirical Force Fields and a Refinement of the Alpha/Gamma DNA Torsions for AMBER J. Chem. Theory Comput. 2021, https://doi.org/10.1021/acs.jctc.1c00697
-
-
-charmm36 forecefields are available:
-
-Base level forcefield with no updates (cannot use with lipids):
-
-charmm36-mar2019.ff
-
-charmm36-jul2020.ff
-
-
-Base level forcefield with OW,HW added to atomtypes (cannot use with modified side chains):
-
-charmm36-jul2021.ff
-
-charmm36_ljpme-jul2021.ff.  # updated LJ long-range dispersion correction: ljpme, Yu et al., doi: 10.1021/acs.jctc.0c01326
-
-
-Updated forcefields to contain lipid atom types, non-bonded and bonded parameters.
-
-charmm36-mar2019-updated.ff
-
-charmm36-jul2020-updated.ff
+- Place a GROMACS force field folder (name.ff) in this directory; it is then listed by -info and can be chosen with -ff name.
+- Alternatively, pass the path to a force field folder directly, e.g. -ff /path/to/name.ff.
+- Prefix a folder name with _ to stop CG2AT2 from reading it.
 
 
 Charmm36 references:
