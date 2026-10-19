@@ -20,14 +20,14 @@ if str(_src) not in sys.path:
 import numpy as np
 import multiprocessing as mp
 import time
-from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, read_in, g_var, check_library
+from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, read_in, g_var, check_library, dihres
 from cg2at_lite.bin.exceptions import CG2ATError
 
 
 def _run() -> None:
     """Core pipeline.  Separated from main() so it can be wrapped cleanly."""
 
-    g_var.script_update = '05-03-2026'
+    g_var.script_update = '17-10-2026'
     g_var.other = {'DA': 'A', 'DG': 'G', 'DC': 'C', 'DT': 'T',
                    'DAX': 'A', 'DGX': 'G', 'DCX': 'C', 'DTX': 'T'}
 
@@ -43,6 +43,7 @@ def _run() -> None:
     gen.forcefield_selection()
     gen.fragment_selection()
     gen.check_water_molecules()
+    dihres.check_input()
 
     if g_var.args.posre is not None and len(g_var.np_directories) > 0:
         check_library.add_posres_file()
@@ -85,6 +86,8 @@ def _run() -> None:
         )
         if not g_var.user_at_input and g_var.args.v >= 1:
             print(gen.print_sequence_info('PROTEIN'))
+        if g_var.args.refine is not None:
+            dihres.compute_tdc()
 
         g_var.tc['p_d_n_t'] = time.time()
         if g_var.user_at_input:
@@ -112,6 +115,8 @@ def _run() -> None:
             at_mod.merge_individual_chain_pdbs( 
                 g_var.working_dir + 'PROTEIN/MIN/PROTEIN_de_novo', '.pdb', 'PROTEIN'
             )
+        if g_var.args.refine is not None:
+            dihres.write_restraints()
 
         if g_var.user_at_input and not os.path.exists(
                 g_var.working_dir + 'PROTEIN/PROTEIN_aligned_merged.pdb'):
@@ -213,6 +218,8 @@ def _run() -> None:
 
     if 'PROTEIN' in g_var.cg_residues:
         at_mod_p.write_RMSD()
+        if g_var.args.refine is not None:
+            dihres.report()
 
     g_var.tc['f_t'] = time.time()
     gen.print_script_timings()

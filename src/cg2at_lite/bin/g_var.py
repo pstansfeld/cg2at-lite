@@ -139,6 +139,41 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
              '(requires -a; on by default when an atomistic structure is supplied).',
         action='store_true')
 
+    # --- Trajectory-guided dihedral restraints ---
+    ref_grp = parser.add_argument_group('trajectory-guided dihedral restraints (requires the new Martini 3 N/CA/C/O backbone)')
+    ref_grp.add_argument('-refine',
+        help='CG trajectory (e.g. .xtc). Backbone φ/ψ distributions are scored by Trajectory Dihedral '
+             'Confidence (TDC) and applied as dihedral restraints during the de novo NVT. '
+             'Requires: pip install "CG2AT-lite[refine]".',
+        metavar='TRAJ', type=str)
+    ref_grp.add_argument('-refine_top',
+        help='Topology for the -refine trajectory (.tpr/.gro/.pdb). Default: the -c file.',
+        metavar='FILE', type=str)
+    ref_grp.add_argument('-refine_step',
+        help='Use every Nth trajectory frame (default: 10).',
+        metavar='N', type=int, default=10)
+    ref_grp.add_argument('-refine_b',
+        help='First trajectory time to use, in ps (default: 0).',
+        metavar='PS', type=float, default=0)
+    ref_grp.add_argument('-refine_e',
+        help='Last trajectory time to use, in ps (default: -1, end of trajectory).',
+        metavar='PS', type=float, default=-1)
+    ref_grp.add_argument('-refine_kmax',
+        help='Maximum dihedral force constant, kJ/mol/rad² (default: 500).',
+        metavar='K', type=float, default=500)
+    ref_grp.add_argument('-refine_sigma',
+        help='Force constant decay scale k = kmax·exp(-σ/sigma), in degrees (default: 30).',
+        metavar='DEG', type=float, default=30)
+    ref_grp.add_argument('-refine_tdc',
+        help='Minimum TDC score for a dihedral to be restrained (default: 40).',
+        metavar='TDC', type=float, default=40)
+    ref_grp.add_argument('-refine_dphi',
+        help='Fixed restraint tolerance in degrees (default: adaptive, 0.3·σ clipped to 5–20°).',
+        metavar='DEG', type=float)
+    ref_grp.add_argument('-refine_nvt',
+        help='Length of the restrained de novo NVT in 1 fs steps (default: 50000; unrestrained NVT is 5000).',
+        metavar='STEPS', type=int, default=50000)
+
     # --- Utilities ---
     util_grp = parser.add_argument_group('utilities')
     util_grp.add_argument('-gmx',
