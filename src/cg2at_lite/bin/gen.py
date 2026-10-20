@@ -19,8 +19,13 @@ from cg2at_lite.bin.exceptions import (
     TopologyError, GromacsError,
 )
 
-# Former force field names accepted by -ff (charmm36-jul2022 was renamed charmm36-cg2at)
-FORCEFIELD_ALIASES = {'charmm36-jul2022': 'charmm36-cg2at'}
+# Former force field names accepted by -ff. CHARMM36 is shipped only as charmm36-cg2at
+# (CHARMM36m/CHARMM36 from the July 2022 toppar, with CG2AT's additions), so the earlier
+# CHARMM36 releases are mapped to it. The LJ-PME variants are not aliased: they need
+# LJ-PME run settings, so silently swapping them would change the model.
+FORCEFIELD_ALIASES = {name: 'charmm36-cg2at' for name in
+                      ['charmm36-jul2022', 'charmm36-jul2021', 'charmm36-jul2020',
+                       'charmm36-jul2020-updated', 'charmm36-mar2019', 'charmm36-mar2019-updated']}
 
 def check_alternate_resname(resname: str) -> str:
     if resname in g_var.alt_res_name:

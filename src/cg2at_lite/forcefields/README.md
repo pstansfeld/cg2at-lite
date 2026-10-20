@@ -3,8 +3,9 @@ Force fields shipped with CG2AT-lite:
 - charmm36-cg2at.ff = CHARMM36m protein / CHARMM36 lipids (July 2022 toppar), ported to GROMACS with charmm2gmx.
                       See charmm36-cg2at.ff/forcefield.doc for the source files and references.
 
-Select it with -ff charmm36-cg2at. The former name charmm36-jul2022 is accepted as an alias
-(a charmm36-jul2022.ff folder exists only inside a fragment library, not here).
+Select it with -ff charmm36-cg2at. The earlier CHARMM36 releases (charmm36-mar2019,
+charmm36-mar2019-updated, charmm36-jul2020, charmm36-jul2020-updated, charmm36-jul2021,
+charmm36-jul2022) are accepted as aliases for it; the LJ-PME variants are not.
 
 Adding a force field:
 

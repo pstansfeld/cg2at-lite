@@ -121,7 +121,7 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 | `-swap` | `str` | — | Swap residues or beads during conversion |
 | `-box` | `float float float` | — | New box dimensions in Å (0 = keep original) |
 | `-w` | `str` | — | Water model (e.g. `tip3p`, `spce`) |
-| `-ff` | `str` | — | Force field (`charmm36-cg2at`; `charmm36-jul2022` is accepted as an alias) |
+| `-ff` | `str` | — | Force field (`charmm36-cg2at`; earlier CHARMM36 names such as `charmm36-jul2022` are accepted as aliases) |
 | `-fg` | `str` | — | Fragment library, or several in priority order (e.g. `martini_2-2_charmm36`) |
 | `-gmx` | `str` | `gmx` | GROMACS executable name |
 | `-messy` | flag | off | Keep all temporary files |
