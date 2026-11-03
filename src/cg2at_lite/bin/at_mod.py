@@ -551,9 +551,63 @@ def place_planar_hydrogens(residue, resname, frag_template, scale=1.0):
     return residue
 
 def correct_minimised_residue(residue_type, pdb_in, pdb_out):
-#### applies correct_stereocentres and place_planar_hydrogens to every molecule of a per-residue
-#### structure (molecules in itp atom order, one after another); fragment atom -> itp position is by
-#### name when the itp names are unique, otherwise the fragment atom number is the itp index
+#### applies correct_planar_links, correct_stereocentres and place_planar_hydrogens to every molecule
+#### of a per-residue structure
+    def mend(residue, frag_template):
+        residue = correct_planar_links(residue, residue_type, frag_template)
+        residue = correct_stereocentres(residue, residue_type, frag_template)
+        return place_planar_hydrogens(residue, residue_type, frag_template, 1.0 / g_var.sf)
+    apply_per_molecule(residue_type, pdb_in, pdb_out, mend)
+
+def distorted(residue, resname, frag_template):
+#### a molecule the minimisation could not mend: a heavy bond stretched more than 10% (a ring held open
+#### by its own restraints), or a stereocentre inverted or splayed nearly flat (two of its heavy bonds
+#### close to linear, where dihedral restraints through it are singular)
+    coords, bonded = fragment_template(resname, frag_template)
+    for a in coords:
+        for b in bonded[a]:
+            if b > a and a in residue and b in residue:
+                length = np.linalg.norm(np.array(residue[a]['coord'], dtype=float) - np.array(residue[b]['coord'], dtype=float))
+                if length > 1.1 * np.linalg.norm(coords[a] - coords[b]) / g_var.sf:
+                    return True
+    for c, three, fourth, carried, sign in stereo_template(resname, frag_template):
+        if any(x not in residue for x in [c] + three):
+            continue
+        v = [np.array(residue[x]['coord'], dtype=float) - np.array(residue[c]['coord'], dtype=float) for x in three]
+        if np.sign(np.dot(v[0], np.cross(v[1], v[2]))) != sign:
+            return True
+        for a, b in itertools.combinations(v, 2):
+            if np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)) < math.cos(math.radians(150)):
+                return True
+    return False
+
+def replace_distorted_molecules(residue_type, pdb_in, pdb_out):
+#### every distorted molecule of a per-residue structure is replaced by the whole fragment, rigidly fitted
+#### to its heavy atoms: it loses the detail of its fit to the CG beads but keeps the fragment's rings,
+#### stereocentres and links, and minimises cleanly from there. Returns the number replaced
+    replaced = []
+    def replace(residue, frag_template):
+        if not distorted(residue, residue_type, frag_template):
+            return residue
+        whole = {number: np.array(atom['coord'], dtype=float) / g_var.sf
+                 for group in frag_template.values() for bead in group.values() for number, atom in bead.items()}
+        heavy = [n for n, atom in ((n, a) for group in frag_template.values() for bead in group.values() for n, a in bead.items())
+                 if not gen.is_hydrogen(atom['atom']) and n in residue]
+        P = np.array([whole[n] for n in heavy]); Q = np.array([residue[n]['coord'] for n in heavy], dtype=float)
+        pc, qc = P.mean(axis=0), Q.mean(axis=0)
+        rot = kabsch_rotate(P - pc, Q - qc)
+        for number in residue:
+            if number in whole:
+                residue[number]['coord'] = (whole[number] - pc).dot(rot) + qc
+        replaced.append(1)
+        return residue
+    apply_per_molecule(residue_type, pdb_in, pdb_out, replace)
+    return len(replaced)
+
+def apply_per_molecule(residue_type, pdb_in, pdb_out, fix):
+#### applies fix(residue, frag_template) to every molecule of a per-residue structure (molecules in itp
+#### atom order, one after another); fragment atom -> itp position is by name when the itp names are
+#### unique, otherwise the fragment atom number is the itp index
     location = gen.fragment_location(residue_type)
     frag_template, _ = get_atomistic(location, residue_type)
     names, in_atoms, molecules = {}, False, 0
@@ -583,14 +637,71 @@ def correct_minimised_residue(residue_type, pdb_in, pdb_out):
         residue = {number: {'coord': np.array([float(lines[rows[p - 1]][30:38]), float(lines[rows[p - 1]][38:46]),
                                                 float(lines[rows[p - 1]][46:54])])}
                    for number, p in position.items() if p is not None and p <= n_atoms}
-        residue = correct_stereocentres(residue, residue_type, frag_template)
-        residue = place_planar_hydrogens(residue, residue_type, frag_template, 1.0 / g_var.sf)
+        residue = fix(residue, frag_template)
         for number, p in position.items():
             if p is not None and number in residue:
                 k = rows[p - 1]
                 lines[k] = lines[k][:30] + '{:8.3f}{:8.3f}{:8.3f}'.format(*residue[number]['coord']) + lines[k][54:]
     with open(pdb_out, 'w') as pdb_output:
         pdb_output.writelines(lines)
+
+_planar_link_cache = {}
+
+def planar_links(resname, frag_template):
+#### amide and ester links of the fragment (a carbonyl carbon bonded to an N or O that has a second heavy
+#### neighbour): (carbonyl C, N/O, its other heavy neighbour, the carbonyl's other two heavy neighbours
+#### with their hydrogens, fragment dihedral about the link for each of those two)
+    if resname not in _planar_link_cache:
+        coords, bonded = fragment_template(resname, frag_template)
+        hydrogens = {}
+        for group in frag_template.values():
+            for bead in group.values():
+                for number, atom in bead.items():
+                    if gen.is_hydrogen(atom['atom']):
+                        hydrogens[number] = np.array(atom['coord'], dtype=float)
+        h_numbers = list(hydrogens)
+        h_tree = cKDTree(np.array([hydrogens[n] for n in h_numbers])) if h_numbers else None
+        attached = lambda n: [h_numbers[i] for i in h_tree.query_ball_point(coords[n], 1.25 * g_var.sf)] if h_tree is not None else []
+        out = []
+        for a in coords:
+            if not frag_atom_name(frag_template, a).startswith('C') or len(bonded[a]) + len(attached(a)) != 3:
+                continue
+            for b in bonded[a]:
+                if frag_atom_name(frag_template, b)[0] not in 'NO' or len(bonded[b]) != 2:
+                    continue
+                l = next(iter(bonded[b] - {a}))
+                movers = sorted(bonded[a] - {b})
+                targets = [dihedral(coords[i], coords[a], coords[b], coords[l]) for i in movers]
+                out.append((a, b, l, movers, [h for i in movers for h in attached(i)], targets))
+        _planar_link_cache[resname] = out
+    return _planar_link_cache[resname]
+
+def correct_planar_links(residue, resname, frag_template):
+#### an amide or ester whose carbonyl and N/O substituent were fitted in different beads can be placed
+#### cis or twisted, and minimisation cannot turn the attached chain back through the barrier. The
+#### carbonyl's two other substituents (the C=O oxygen and the alpha carbon, with its hydrogens) are
+#### turned about the link to the fragment's (trans) dihedral; only the alpha carbon's onward bond is
+#### stretched, which the minimisation then relaxes. CISRES holds the link afterwards
+    for a, b, l, movers, carried, targets in planar_links(resname, frag_template):
+        if any(x not in residue for x in [a, b, l] + movers + carried):
+            continue
+        X = {x: np.array(residue[x]['coord'], dtype=float) for x in [a, b, l] + movers + carried}
+        current = dihedral(X[movers[0]], X[a], X[b], X[l])
+        delta = math.atan2(math.sin(targets[0] - current), math.cos(targets[0] - current))
+        if abs(delta) < math.radians(30):
+            continue
+        axis = X[a] - X[b]
+        best = None
+        for angle in (delta, -delta):
+            rot = rotation_about_axis(axis, angle)
+            moved = {x: (X[x] - X[a]).dot(rot) + X[a] for x in movers + carried}
+            error = abs(math.atan2(math.sin(targets[0] - dihedral(moved[movers[0]], X[a], X[b], X[l])),
+                                   math.cos(targets[0] - dihedral(moved[movers[0]], X[a], X[b], X[l]))))
+            if best is None or error < best[0]:
+                best = (error, moved)
+        for x, coord in best[1].items():
+            residue[x]['coord'] = coord
+    return residue
 
 def rotation_about_axis(axis, angle):
 #### row-vector rotation matrix (used as coord.dot(matrix)) for a right-handed turn about axis
