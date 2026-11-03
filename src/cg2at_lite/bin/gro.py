@@ -140,13 +140,14 @@ def write_cisres(residue_type, itp_file):
                 names.setdefault(line_sep[4], []).append(int(line_sep[0]))
     frag_template, _ = at_mod.get_atomistic(gen.fragment_location(residue_type), residue_type)
     coords, bonded = at_mod.fragment_template(residue_type, frag_template)
-    atom_names, hydrogens = {}, []
+    atom_names, hydrogens, h_numbers = {}, [], []
     for group in frag_template.values():
         for bead in group.values():
             for number, atom in bead.items():
                 atom_names[number] = atom['atom']
                 if gen.is_hydrogen(atom['atom']):
                     hydrogens.append(np.array(atom['coord'], dtype=float))
+                    h_numbers.append(number)
 #### fragment atom -> itp index: by name when every itp name is unique, otherwise (itps that reuse
 #### names, e.g. multi-unit glycans) the fragment atom number is the itp index
     unique = all(len(index) == 1 for index in names.values())
@@ -177,6 +178,21 @@ def write_cisres(residue_type, itp_file):
                     if index:
                         phi = np.degrees(at_mod.dihedral(*[coords[x] for x in (i, a, b, l)]))
                         restraints.append(index + [phi, 10.0, 1000.0])
+#### amide and ester bonds (a carbonyl carbon bonded to an N or O that has a second heavy neighbour):
+#### the carbonyl and its N/O substituent usually sit in different beads, so nothing in the placement
+#### fixes the torsion about the C(=O)-N/O bond and minimisation leaves it cis or twisted. Each is held
+#### at its fragment (trans) geometry like a C=C bond
+        if a not in sp2:
+            continue
+        for b in bonded[a]:
+            if atom_names[b][0] not in 'NO' or len(bonded[b]) != 2:
+                continue
+            for i in bonded[a] - {b}:
+                for l in bonded[b] - {a}:
+                    index = indices((i, a, b, l))
+                    if index:
+                        phi = np.degrees(at_mod.dihedral(*[coords[x] for x in (i, a, b, l)]))
+                        restraints.append(index + [phi, 15.0, 1000.0])
 #### saturated six-membered rings (sugars, inositol, steroid rings) that are chairs in the
 #### fragment: their ring torsions are held too, so the chair (and which chair) survives
     for ring in at_mod.six_membered_rings(bonded):
@@ -207,6 +223,16 @@ def write_cisres(residue_type, itp_file):
         phi = np.degrees(at_mod.dihedral(*[coords[x] for x in heavy + [c]]))
         if abs(phi) >= 10:
             restraints.append(index + [phi, 15.0, 'CHIRAL_K'])
+#### a methine hydrogen is held on its side of the same three heavy neighbours: with only the carbon
+#### restrained, the heavy atoms can splay flat and push the hydrogen through to their face. It only
+#### guards the side, so it takes the ordinary force constant: at CHIRAL_K it fights the carbon's own
+#### restraint on a flattened centre and the minimisation stalls
+            if h_tree is not None and len(bonded[c]) == 3:
+                h = [h_numbers[k] for k in h_tree.query_ball_point(coords[c], 1.25 * g_var.sf)]
+                h_index = indices(heavy + h[:1]) if len(h) == 1 else None
+                if h_index:
+                    h_phi = np.degrees(at_mod.dihedral(*[coords[x] for x in heavy] + [hydrogens[h_numbers.index(h[0])]]))
+                    restraints.append(h_index + [h_phi, 15.0, 1000.0])
     if not restraints:
         return False
     with open(g_var.working_dir+residue_type+'/'+cisres_itp_name(residue_type), 'w') as cisres:
@@ -477,23 +503,50 @@ def minimise_merged(residue_type, input_file):
 #### between freshly placed beads are still badly stretched, so a non-protein residue is first
 #### minimised with them soft, any centre that came out inverted is mended on the relaxed structure,
 #### and the strong restraints are applied from there
-    if residue_type in g_var.np_residues and os.path.exists(cisres_itp_name(residue_type)):
+    restrained = residue_type in g_var.np_residues and os.path.exists(cisres_itp_name(residue_type))
+    if restrained:
         soft_input = soft_minimise(residue_type, input_file)
         if soft_input:
             input_file = soft_input
-#### grompp with merged system
+    success, converged = strong_minimise(residue_type, input_file, 'min')
+#### a soft pass can converge with a centre dragged through by a substituent placed on the wrong side;
+#### mended by reflection, that centre is left splayed flat and the strong pass stalls on it. Or the strong
+#### pass converges with a ring held open by its own restraints. The molecules left like that are replaced
+#### by the rigidly fitted whole fragment, and the soft and strong passes are repeated from there (once)
+    source = residue_type+'_merged.pdb' if converged else input_file
+    if restrained and os.path.exists(source):
+        if at_mod.replace_distorted_molecules(residue_type, source, residue_type+'_merged_rescue_fixed.pdb'):
+            soft_pdb, _ = em_pass(residue_type, 'em_'+residue_type+'_soft.mdp', '-DCISRES -DCHIRAL_K=1000.0',
+                                  residue_type+'_merged_rescue_fixed.pdb', 'rescue_soft')
+            if soft_pdb:
+                at_mod.correct_minimised_residue(residue_type, soft_pdb, residue_type+'_merged_rescue_soft_fixed.pdb')
+#### gromacs() skips a command whose output exists, so the stalled structure is moved aside first
+                if os.path.exists(residue_type+'_merged.pdb'):
+                    os.rename(residue_type+'_merged.pdb', residue_type+'_merged_min_stalled.pdb')
+                success, converged = strong_minimise(residue_type, residue_type+'_merged_rescue_soft_fixed.pdb', 'rescue_min')
+    os.chdir(g_var.working_dir)
+    return success
+
+def strong_minimise(residue_type, input_file, name):
+#### the final minimisation of a residue type (full stereocentre restraints) into <residue>_merged.pdb;
+#### returns gromacs' success flag and whether steepest descents reached emtol
+    os.chdir(g_var.working_dir+residue_type)
     gromacs([g_var.args.gmx+' grompp '+
             '-po md_out-'+residue_type+' '+
             '-f em_'+residue_type+'.mdp '+
             '-p topol_'+residue_type+'.top '+
             '-c '+input_file+' '+
-            '-o '+g_var.working_dir+residue_type+'/MIN/'+residue_type+'_merged_min -maxwarn 1', g_var.working_dir+residue_type+'/MIN/'+residue_type+'_merged_min.tpr'])
+            '-o '+g_var.working_dir+residue_type+'/MIN/'+residue_type+'_merged_'+name+' -maxwarn 1', g_var.working_dir+residue_type+'/MIN/'+residue_type+'_merged_'+name+'.tpr'])
 #### change to min directory and minimise
-    os.chdir('MIN') 
+    os.chdir('MIN')
     # removed flag -nt '+str(g_var.args.ncpus)+'
-    complete, success = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+residue_type+'_merged_min -c ../'+residue_type+'_merged.pdb', '../'+residue_type+'_merged.pdb'])
-    os.chdir(g_var.working_dir)
-    return success
+    complete, success = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+residue_type+'_merged_'+name+' -c ../'+residue_type+'_merged.pdb', '../'+residue_type+'_merged.pdb'])
+    converged = False
+    if os.path.exists(residue_type+'_merged_'+name+'.log'):
+        with open(residue_type+'_merged_'+name+'.log') as log_input:
+            converged = any('converged to Fmax' in line for line in log_input)
+    os.chdir('..')
+    return success, converged
 
 def em_pass(residue_type, mdp, define, input_file, name):
 #### one minimisation of a residue type with the given define; returns the output pdb (or None)

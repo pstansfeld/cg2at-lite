@@ -79,6 +79,7 @@ def at_np_solvent(cg_residue_type,cg_residues):
 
         if cg_residue_type in g_var.np_residues:
             atomistic_fragments[cg_resid] = at_mod.check_hydrogens(atomistic_fragments[cg_resid])
+            atomistic_fragments[cg_resid] = at_mod.correct_planar_links(atomistic_fragments[cg_resid], cg_residue_type, frag_template)
             atomistic_fragments[cg_resid] = at_mod.correct_stereocentres(atomistic_fragments[cg_resid], cg_residue_type, frag_template)
             atomistic_fragments[cg_resid] = at_mod.place_planar_hydrogens(atomistic_fragments[cg_resid], cg_residue_type, frag_template)
         if len(g_var.res_top[cg_residue_type]['CHIRAL']) > 1:
