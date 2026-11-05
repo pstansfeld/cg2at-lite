@@ -198,8 +198,17 @@ def links_from_distances():
                 used.update([(i, a1), (j, a2)])
                 links.append((i, a1, j, a2, kind))
     of = lambda names, bead, atom: [(k, bead, atom) for k, (n, b) in enumerate(res) if n in names]
-    take(sorted(candidates(of(['NAG'], 'B1', 'C1'), of(['NAM'], 'B4', 'O4'), LINK_CUTOFF['glycosidic']) +
-                candidates(of(['NAM'], 'B1', 'C1'), of(['NAG'], 'B4', 'O4'), LINK_CUTOFF['glycosidic'])), 'glycosidic')
+    glycosidic = sorted(candidates(of(['NAG'], 'B1', 'C1'), of(['NAM'], 'B4', 'O4'), LINK_CUTOFF['glycosidic']) +
+                        candidates(of(['NAM'], 'B1', 'C1'), of(['NAG'], 'B4', 'O4'), LINK_CUTOFF['glycosidic']))
+#### Insane writes each strand in order, so sequence neighbours are linked first; MemPrO's periodic closure
+#### bond (first NAG B1 - last NAM B4) holds a wrong pair close together and would otherwise win
+    take([pair for pair in glycosidic if pair[3] == pair[1] + 1], 'glycosidic')
+    take(glycosidic, 'glycosidic')
+#### strand closures: MemPrO joins a periodic strand's first NAG B1 to its last NAM B4 (which holds them
+#### together); the free last NAM C1 and first NAG O4 of such a pair are linked (beads up to 9 A apart)
+    closures = [pair for pair in candidates(of(['NAM'], 'B1', 'C1'), of(['NAG'], 'B4', 'O4'), 9.0)
+                if bead_distance(res[pair[3]][1]['B1']['coord'], res[pair[1]][1]['B4']['coord']) < LINK_CUTOFF['glycosidic']]
+    take(closures, 'glycosidic')
     take(candidates([(k, 'B5', 'CE3') for k, (n, b) in enumerate(res) if n == 'NAM'],
                     [(k, 'B1', 'N1') for k, (n, b) in enumerate(res) if n in STEMS], LINK_CUTOFF['stem']), 'stem')
     take(candidates([(k, DONOR[n][0], DONOR[n][1]) for k, (n, b) in enumerate(res) if n in DONOR],
