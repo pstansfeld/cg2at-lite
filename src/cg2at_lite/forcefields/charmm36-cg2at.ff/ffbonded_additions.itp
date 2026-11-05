@@ -1,5 +1,5 @@
 ; CG2AT additions to charmm36-cg2at: bonded parameters missing from ffbonded.itp that
-; fragments in the CG2AT libraries need (LIP3, APG). Copied from the
+; fragments in the CG2AT libraries need (LIP3, APG, peptidoglycan). Copied from the
 ; charmm36-jul2020-updated force field that earlier CG2AT releases shipped, with explicit
 ; atom types; each line notes the residue(s) that need it and the source line it matched.
 
@@ -72,3 +72,4 @@ CG311  OG3C61  CG311  CG331  9  0.000000e+00 6.276000e-01 4   ; LIP3 (from CG331
 CG311  OG3C61  CG311  CG331  9  0.000000e+00 2.845120e+00 2   ; LIP3 (from CG331 CG311 OG3C61 CG311)
 CG311  OG3C61  CG311  CG331  9  1.800000e+02 8.786400e-01 3   ; LIP3 (from CG331 CG311 OG3C61 CG311)
 CG311  OG3C61  CG311  CG331  9  1.800000e+02 2.217520e+00 1   ; LIP3 (from CG331 CG311 OG3C61 CG311)
+X  CTD1  NH3  X  9  0.000000e+00 4.184000e-01 3   ; peptidoglycan mDAP free D-centre amine (CTD1 is the D-amino-acid copy of CT1; from X CT1 NH3 X)
