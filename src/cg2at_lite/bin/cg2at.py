@@ -20,7 +20,7 @@ if str(_src) not in sys.path:
 import numpy as np
 import multiprocessing as mp
 import time
-from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, read_in, g_var, check_library, dihres
+from cg2at_lite.bin import gen, gro, at_mod, at_mod_p, at_mod_np, at_mod_pg, read_in, g_var, check_library, dihres
 from cg2at_lite.bin.exceptions import CG2ATError
 
 
@@ -77,6 +77,8 @@ def _run() -> None:
     read_in.real_box_vectors(g_var.box_vec)
     read_in.fix_pbc(box_vec_initial, g_var.box_vec, box_shift)
     at_mod.sanity_check()
+    if at_mod_pg.pg_present():
+        at_mod_pg.collect_pg_residues()
 
     # --- Protein ---
     g_var.tc['r_i_t'] = time.time()
@@ -146,6 +148,10 @@ def _run() -> None:
             )
     g_var.tc['f_o_t'] = time.time()
 
+    # --- Peptidoglycan layer (one molecule across the box) ---
+    if g_var.pg_residues:
+        g_var.system.update(at_mod_pg.build_pg_layer())
+
     # --- Non-protein residues ---
     non_protein_types = [k for k in g_var.cg_residues if k not in ['PROTEIN', 'OTHER']]
     if non_protein_types:
@@ -202,6 +208,12 @@ def _run() -> None:
             g_var.merged_directory + 'checked_ringed_lipid_de_novo.pdb',
             g_var.final_dir + 'final_cg2at_de_novo.pdb',
         )
+
+    if g_var.pg_residues and os.path.exists(g_var.final_dir + 'final_cg2at_de_novo.pdb'):
+        at_mod_pg.report_geometry(None, 'PGL in final_cg2at_de_novo.pdb',
+                                  at_mod_pg.read_pg_coordinates(g_var.final_dir + 'final_cg2at_de_novo.pdb'))
+        if g_var.pg_charge_offset:
+            print('Note: the system is '+str(g_var.pg_charge_offset)+' e from neutral (PG charges differ from the CG model)')
 
     g_var.tc['eq_t'] = time.time()
 

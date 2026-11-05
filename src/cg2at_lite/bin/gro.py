@@ -39,6 +39,18 @@ def collect_input():
                 g_var.user_at_input = True
             os.chdir(g_var.start_dir)
 
+    if g_var.args.pgl is not None:
+        if not os.path.exists(g_var.args.pgl):
+            raise InputError('Cannot find the PG layer topology: '+g_var.args.pgl)
+        gen.file_copy_and_check(g_var.args.pgl, g_var.input_directory+gen.path_leaf(g_var.args.pgl)[1])
+#### a topol.top is read with the files it includes, which are copied alongside
+        if g_var.args.pgl.endswith('.top'):
+            with open(g_var.args.pgl) as top:
+                for line in top:
+                    if line.strip().startswith('#include') and '"' in line:
+                        include = os.path.join(os.path.dirname(os.path.abspath(g_var.args.pgl)), line.split('"')[1])
+                        if os.path.exists(include) and not os.path.isabs(line.split('"')[1]):
+                            gen.file_copy_and_check(include, g_var.input_directory+gen.path_leaf(include)[1])
     gen.file_copy_and_check(g_var.args.c, g_var.input_directory+gen.path_leaf(g_var.args.c)[1])
     os.chdir(g_var.input_directory)
     if not hasattr(g_var, 'gmx_version'):
@@ -109,8 +121,11 @@ def make_min(residue):#, fragments):
         with open('em_'+residue+'.mdp','w') as em:
 #### CISRES only where a topology can use it (non-protein residues and the merged system):
 #### GROMACS warns about defined macros that the topology never uses
-            define = '-DCISRES' if residue in g_var.np_residues or residue == 'merged_cg2at' else ''
+            define = '-DCISRES' if residue in g_var.np_residues or residue in ['merged_cg2at', 'PGL'] else ''
             em.write('define = '+define+'\n integrator = steep\nnsteps = 20000\nemtol = 750\nemstep = 0.001\ncutoff-scheme = Verlet\n')
+#### a peptidoglycan layer is one molecule bonded across the periodic box
+            if residue in ['merged_cg2at', 'PGL'] and g_var.pg_residues:
+                em.write('periodic-molecules = yes\n')
 
 #### Double-bond restraints. Placing rigid fragments on CG beads leaves the bonds between
 #### beads stretched or compressed, and minimising that away can rotate C=C double bonds
@@ -126,6 +141,15 @@ def cisres_itp_name(residue_type):
 
 def write_cisres(residue_type, itp_file):
 #### writes <residue>_cisres.itp in the residue directory; returns True if it has restraints
+    restraints = cisres_restraints(residue_type, itp_file)
+    if not restraints:
+        return False
+    write_cisres_file(g_var.working_dir+residue_type+'/'+cisres_itp_name(residue_type), restraints)
+    return True
+
+def cisres_restraints(residue_type, itp_file):
+#### the CISRES dihedral restraints of one molecule of a fragment, as [ai, aj, ak, al, phi, dphi, kfac]
+#### with itp atom indices
     names, in_atoms, molecules = {}, False, 0
     with open(itp_file, 'r') as itp_input:
         for line in itp_input:
@@ -233,9 +257,10 @@ def write_cisres(residue_type, itp_file):
                 if h_index:
                     h_phi = np.degrees(at_mod.dihedral(*[coords[x] for x in heavy] + [hydrogens[h_numbers.index(h[0])]]))
                     restraints.append(h_index + [h_phi, 15.0, 1000.0])
-    if not restraints:
-        return False
-    with open(g_var.working_dir+residue_type+'/'+cisres_itp_name(residue_type), 'w') as cisres:
+    return restraints
+
+def write_cisres_file(file_name, restraints):
+    with open(file_name, 'w') as cisres:
         cisres.write('; holds double bonds, chair rings and stereocentres at the fragment geometry during CG2AT minimisation/NVT\n')
 #### the stereocentre force constant is a macro: the first, soft pass of the per-residue minimisation
 #### sets it low (see minimise_merged); everywhere else it takes this default
@@ -244,7 +269,6 @@ def write_cisres(residue_type, itp_file):
         for ai, aj, ak, al, phi, dphi, kfac in restraints:
             kfac = kfac if isinstance(kfac, str) else '{:7.1f}'.format(kfac)
             cisres.write('{:5d}{:5d}{:5d}{:5d}    1 {:8.2f}  {:4.1f}  {}\n'.format(ai, aj, ak, al, phi, dphi, kfac))
-    return True
 
 #### referenced when a topology has no restraints, so the CISRES define is never reported as unused
 CISRES_UNUSED = '#ifdef CISRES\n; no double-bond, ring or stereocentre restraints\n#endif\n'
@@ -659,6 +683,12 @@ def write_merged_topol():
                             gen.file_copy_and_check(cisres, cisres_itp_name(residue_type))
                             topologies_to_include.append(cisres_include(residue_type))
                     break
+        #### the peptidoglycan layer topology written by at_mod_pg
+            if residue_type == 'PGL':
+                topologies_to_include.append('#include \"PGL.itp\"\n')
+                gen.file_copy_and_check(g_var.working_dir+'PGL/PGL.itp', 'PGL.itp')
+                gen.file_copy_and_check(g_var.working_dir+'PGL/'+cisres_itp_name('PGL'), cisres_itp_name('PGL'))
+                topologies_to_include.append(cisres_include('PGL'))
         #### copies across protein itp files and simplifies the names 
             if residue_type in ['PROTEIN', 'OTHER']:
                 for unit in range(g_var.system[residue_type]): 
@@ -723,7 +753,9 @@ def write_steered_mdp(loc, posres, time, timestep):
             steered_md.write('nstxout-compressed = 1000\nnstenergy = 1000\nconstraints = h-bonds\nnstlist = 25\nrlist = 1.2\nrcoulomb = 1.2\nrvdw = 1.2\ncoulombtype  = PME\n')
             steered_md.write('pme_order = 4\nfourierspacing = 0.135\ntcoupl = v-rescale\ntc-grps = system\ntau_t = 0.1\nref_t = 310\npcoupl = no\n')
             steered_md.write('pbc = xyz\nDispCorr = no\ngen_vel = no\nrefcoord_scaling = all\ncutoff-scheme = Verlet\n')
-            steered_md.write('disre=simple\ndisre-weighting=equal\ndisre-fc=1000\ndisre-tau=1\nnstdisreout=1\n')   
+            steered_md.write('disre=simple\ndisre-weighting=equal\ndisre-fc=1000\ndisre-tau=1\nnstdisreout=1\n')
+            if g_var.pg_residues:
+                steered_md.write('periodic-molecules = yes\n')
 
 def steer_to_aligned(protein_type, fc, input_file ):
     gen.mkdir_directory(g_var.merged_directory+'STEER')
