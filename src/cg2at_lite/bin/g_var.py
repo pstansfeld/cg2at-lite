@@ -7,7 +7,7 @@ from pathlib import Path
 
 # Single source of truth for the version string — referenced by argparse
 # below and by cg2at_header() in gen.py.
-VERSION: str = '0.5.0.lite'
+VERSION: str = '0.5.1.lite'
 
 if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
     parser = argparse.ArgumentParser(
@@ -43,6 +43,10 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
         help='Atomistic input structure(s). Supplying the original atomistic file improves conversion quality. '
              'Multiple files are accepted.',
         metavar='FILE', type=str, nargs='*')
+    input_grp.add_argument('-pgl',
+        help='CG topology of a MemPrO/Insane peptidoglycan layer: the PGL.itp, or the topol.top that includes it. '
+             'Gives the glycosidic bonds and cross-links; without it they are inferred from bead distances.',
+        metavar='FILE', type=str)
 
     # --- Force field and fragment library ---
     ff_grp = parser.add_argument_group('force field and fragment library')
@@ -263,3 +267,7 @@ if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
     hydration = {}
     get_forcefield = True
     cg_chain_group = {}
+    pg_residues = [] ## peptidoglycan residues in PGL order [(resname, beads)]
+    pg_atoms = [] ## atoms of the PGL molecule
+    pg_index = {} ## (PGL residue, atom name) -> PGL atom index
+    pg_charge_offset = 0

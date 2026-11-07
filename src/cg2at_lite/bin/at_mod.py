@@ -604,6 +604,124 @@ def replace_distorted_molecules(residue_type, pdb_in, pdb_out):
     apply_per_molecule(residue_type, pdb_in, pdb_out, replace)
     return len(replaced)
 
+def pdb_box(lines):
+#### box vectors (rows, Angstrom) from a pdb's CRYST1 record, or None without one
+    for line in lines:
+        if line.startswith('CRYST1'):
+            try:
+                a, b, c = float(line[6:15]), float(line[15:24]), float(line[24:33])
+                alpha, beta, gamma = [math.radians(float(line[k:k + 7])) for k in (33, 40, 47)]
+            except ValueError:
+                return None
+            if min(a, b, c) <= 1:
+                return None
+            cx = c * math.cos(beta)
+            cy = c * (math.cos(alpha) - math.cos(beta) * math.cos(gamma)) / math.sin(gamma)
+            return np.array([[a, 0, 0], [b * math.cos(gamma), b * math.sin(gamma), 0],
+                             [cx, cy, math.sqrt(max(c**2 - cx**2 - cy**2, 0))]])
+        if line.startswith('ATOM'):
+            return None
+    return None
+
+def minimum_image(d, box):
+#### the shortest periodic image of a separation vector
+    if box is None:
+        return d
+    frac = np.linalg.solve(box.T, d)
+    return box.T.dot(frac - np.round(frac))
+
+_h_parent_cache = {}
+
+def hydrogen_parents(resname, frag_template):
+#### each hydrogen of the fragment -> its nearest heavy atom (cached per residue)
+    if resname not in _h_parent_cache:
+        coords, _ = fragment_template(resname, frag_template)
+        heavy = list(coords)
+        parents = {}
+        if heavy:
+            tree = cKDTree(np.array([coords[n] for n in heavy]))
+            for group in frag_template.values():
+                for bead in group.values():
+                    for number, atom in bead.items():
+                        if gen.is_hydrogen(atom['atom']):
+                            parents[number] = heavy[tree.query(np.array(atom['coord'], dtype=float))[1]]
+        _h_parent_cache[resname] = parents
+    return _h_parent_cache[resname]
+
+def make_whole(residue, resname, frag_template, box):
+#### moves the atoms of a molecule into one periodic image, along the fragment's heavy-atom bonds
+#### (each hydrogen next to its nearest heavy atom in the fragment); returns the shift given to each
+#### atom moved. Leaves the molecule as it is without a box
+    if box is None:
+        return {}
+    coords, bonded = fragment_template(resname, frag_template)
+    shifts, seen = {}, set()
+    def move(number, reference):
+        X = np.array(residue[number]['coord'], dtype=float)
+        R = np.array(residue[reference]['coord'], dtype=float)
+        new = R + minimum_image(X - R, box)
+        if np.linalg.norm(new - X) > 1e-6:
+            residue[number]['coord'] = new
+            shifts[number] = new - X
+    for root in coords:
+        if root in seen or root not in residue:
+            continue
+        seen.add(root)
+        queue = [root]
+        while queue:
+            current = queue.pop()
+            for nxt in bonded[current]:
+                if nxt not in seen and nxt in residue:
+                    seen.add(nxt)
+                    move(nxt, current)
+                    queue.append(nxt)
+    for h, parent in hydrogen_parents(resname, frag_template).items():
+        if h in residue and parent in residue:
+            move(h, parent)
+    return shifts
+
+_cis_cache = {}
+
+def cis_double_bonds(resname, frag_template):
+#### C=C bonds of the fragment (between two carbons with three neighbours each, hydrogens included,
+#### outside rings) whose heavy substituents are cis: (i, a, b, l) for each cis heavy-atom dihedral
+    if resname not in _cis_cache:
+        coords, bonded = fragment_template(resname, frag_template)
+        n_h = {number: 0 for number in coords}
+        for h, parent in hydrogen_parents(resname, frag_template).items():
+            n_h[parent] += 1
+        names = {number: frag_atom_name(frag_template, number) for number in coords}
+        ring_atoms = {atom for ring in six_membered_rings(bonded) for atom in ring}
+        sp2 = {n for n in coords if names[n].startswith('C') and len(bonded[n]) + n_h[n] == 3 and n not in ring_atoms}
+        out = []
+        for a in sp2:
+            for b in bonded[a]:
+                if b <= a or b not in sp2:
+                    continue
+                for i in bonded[a] - {b}:
+                    for l in bonded[b] - {a}:
+                        if abs(math.degrees(dihedral(*[coords[x] for x in (i, a, b, l)]))) < 30:
+                            out.append((i, a, b, l))
+        _cis_cache[resname] = out
+    return _cis_cache[resname]
+
+def trans_double_bonds(residue_type, pdb_in):
+#### counts the fragment's cis C=C bonds that came out trans (|dihedral| > 90 deg) in a per-residue
+#### structure: (bonds turned, bonds checked, molecules with one or more)
+    counts = [0, 0, 0]
+    def check(residue, frag_template):
+        turned = 0
+        for i, a, b, l in cis_double_bonds(residue_type, frag_template):
+            if all(x in residue for x in (i, a, b, l)):
+                counts[1] += 1
+                if abs(math.degrees(dihedral(*[np.array(residue[x]['coord'], dtype=float) for x in (i, a, b, l)]))) > 90:
+                    turned += 1
+        counts[0] += turned
+        counts[2] += turned > 0
+        return residue
+    apply_per_molecule(residue_type, pdb_in, os.devnull, check)
+    return tuple(counts)
+
 def apply_per_molecule(residue_type, pdb_in, pdb_out, fix):
 #### applies fix(residue, frag_template) to every molecule of a per-residue structure (molecules in itp
 #### atom order, one after another); fragment atom -> itp position is by name when the itp names are
@@ -631,13 +749,21 @@ def apply_per_molecule(residue_type, pdb_in, pdb_out, fix):
                 position[number] = (names[atom['atom']][0] if atom['atom'] in names else None) if unique else number
     with open(pdb_in) as pdb_input:
         lines = pdb_input.readlines()
+    box = pdb_box(lines)
     atom_lines = [k for k, line in enumerate(lines) if line.startswith('ATOM')]
     for start in range(0, len(atom_lines) - n_atoms + 1, n_atoms):
         rows = atom_lines[start:start + n_atoms]
         residue = {number: {'coord': np.array([float(lines[rows[p - 1]][30:38]), float(lines[rows[p - 1]][38:46]),
                                                 float(lines[rows[p - 1]][46:54])])}
                    for number, p in position.items() if p is not None and p <= n_atoms}
+#### a molecule split across the periodic boundary is made whole first (its bonds would otherwise
+#### measure a box length, and every one crossing the boundary was taken for a distortion); each atom
+#### is put back in its own periodic image afterwards, so the structure is wrapped as before
+        shifts = make_whole(residue, residue_type, frag_template, box)
         residue = fix(residue, frag_template)
+        for number, shift in shifts.items():
+            if number in residue:
+                residue[number]['coord'] = np.array(residue[number]['coord'], dtype=float) - shift
         for number, p in position.items():
             if p is not None and number in residue:
                 k = rows[p - 1]
