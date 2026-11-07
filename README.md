@@ -17,8 +17,9 @@
 9. [Output Conversion Modes](#output-conversion-modes)
 10. [Detailed Flag Guide](#detailed-flag-guide)
 11. [Trajectory-Guided Dihedral Restraints](#trajectory-guided-dihedral-restraints)
-12. [Database Structure](#database-structure)
-13. [Adding Fragments to the Database](#adding-fragments-to-the-database)
+12. [Peptidoglycan Layers](#peptidoglycan-layers)
+13. [Database Structure](#database-structure)
+14. [Adding Fragments to the Database](#adding-fragments-to-the-database)
 
 ---
 
@@ -107,6 +108,7 @@ cg2at_lite -c cg_input.gro -a atomistic_input.gro \
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `-a` | `pdb/gro/tpr` | — | Atomistic input coordinates |
+| `-pgl` | `itp/top` | — | CG topology of a MemPrO/Insane [peptidoglycan layer](#peptidoglycan-layers) (`PGL.itp`, or the `topol.top` that includes it) |
 | `-d` | `0:2 1:3` | — | Duplicate atomistic chains (chain:copies) |
 | `-loc` | `str` | `CG2AT_<timestamp>` | Output folder (relative or absolute path) |
 | `-o` | `all/align/de_novo/none` | `all` | Output conversion mode |
@@ -437,6 +439,42 @@ How it fits into the pipeline:
 The standalone `cg2at_refine` command applies the same restraints as a separate minimisation + NVT to an existing CG2AT output folder (`cg2at_refine -cg2at CG2AT_<timestamp> -tpr cg.tpr -xtc cg_traj.xtc`).
 
 Worked examples (1UBQ, 2LZM, 3D4S, 3X29, 6TIQ) with inputs, commands and reference outputs are in [`example/`](example/) (the CG trajectories are not included). `example/4QWP_oldM3/` is a CG input built with the old Martini 3 backbone beads, for checking backward compatibility.
+
+---
+
+## Peptidoglycan Layers
+
+Peptidoglycan (PG) layers built by MemPrO's Insane (Martini 3: residues `NAG`, `NAM`, `SPEP`, `UPEP`,
+`UUPEP` in one `PGL` molecule bonded across the periodic box) are converted to CHARMM36 with the
+`martini_3-0_charmm36` or `martini_3-1_new_lipidome_charmm36` libraries:
+
+```bash
+cg2at_lite -c relaxed.gro -pgl topol.top -ff charmm36-cg2at -fg martini_3-0_charmm36 -w tip3p
+```
+
+- **Chemistry.** β-GlcNAc and β-MurNAc (CHARMM36 carbohydrate types), the L-Ala-D-iGlu-mDAP-D-Ala-D-Ala
+  stem (CHARMM36 protein types, D-centres `CTD1`), β1,4 glycosidic bonds (14bb charges), the MurNAc
+  lactyl amide to the stem, and 3-4 (D-Ala4) and 3-3 (mDAP L-centre) cross-links to the acceptor's
+  mDAP D-centre amine. Each residue is fitted from its fragment (the free state); the links are applied
+  as patches and one `PGL` moleculetype is written, with angles, dihedrals, pairs, impropers and CMAP
+  generated from the bond graph.
+- **Links.** Read from the CG topology given with `-pgl`. Without it they are inferred from bead
+  distances (minimum image), which is less safe. MemPrO closes a periodic strand with a first NAG B1 -
+  last NAM B4 bond; it is built as the last NAM C1 - first NAG O4 link.
+- **Relax the CG system first.** A freshly built Insane layer has its sugar beads at about half their
+  bond lengths and is refused; minimise it and run a short CG MD (`periodic-molecules = yes`).
+- **Periodic molecule.** Every minimisation and NVT run gets `periodic-molecules = yes`; use it in your
+  own runs too. Stereocentre inversions, sugar ring puckers and the bead RMSD to the CG input are
+  printed for the PG layer.
+- **Charge.** MemPrO 0.5.0 and later give each CG residue its all-atom charge: a cross-link
+  acceptor's bead 7 and the bead 8 of a tetrapeptide that donates no link (a free D-Ala4 carboxylate)
+  are Q5n, −1. With a CG topology from an older MemPrO, such a tetrapeptide is −2 in the CG model but
+  −3 all-atom; CG2AT compares every residue with the CG topology and reports the net charge offset,
+  which then needs extra counter-ions before production MD.
+- **Reports.** The bead RMSD printed for the final structure follows CG2AT's short NVT (thermal motion of
+  the stems, about 3 Å); the value after the PGL minimisation (about 1 Å) measures the fit to the CG beads.
+- **Test.** `python -m unittest discover tests` checks links, charges and the PGL topology (grompp) on a
+  small relaxed layer in a few seconds (needs GROMACS: `gmx` on the `PATH`, or `CG2AT_GMX`).
 
 ---
 
