@@ -92,6 +92,11 @@ class TestPeptidoglycanLayer(unittest.TestCase):
         # at most one glycosidic bond per sugar (one per sugar in a strand closed across the box)
         self.assertLessEqual(kinds['glycosidic'], residues.count('NAG') + residues.count('NAM'))
         self.assertGreater(kinds['glycosidic'], residues.count('NAG'))
+        # the layer has a strand closed across the box (MemPrO 3b45ad5: last sugar C1 -> first sugar O4)
+        glycosidic = [link for link in self.links if link[4] == 'glycosidic']
+        ends = [(link[0], link[1]) for link in glycosidic] + [(link[2], link[3]) for link in glycosidic]
+        self.assertEqual(len(ends), len(set(ends)))
+        self.assertTrue(any(abs(link[0] - link[2]) > 1 for link in glycosidic))
         self.assertEqual(sorted(link[:4] for link in self.links), sorted(link[:4] for link in self.inferred))
         # both kinds of cross-link, and a tetrapeptide that only accepts a 3-3 link
         donors = {residues[link[0]] for link in self.links if link[4] == 'cross'}
