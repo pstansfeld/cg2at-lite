@@ -539,15 +539,28 @@ def minimise_merged(residue_type, input_file):
 #### by the rigidly fitted whole fragment, and the soft and strong passes are repeated from there (once)
     source = residue_type+'_merged.pdb' if converged else input_file
     if restrained and os.path.exists(source):
-        if at_mod.replace_distorted_molecules(residue_type, source, residue_type+'_merged_rescue_fixed.pdb'):
-            soft_pdb, _ = em_pass(residue_type, 'em_'+residue_type+'_soft.mdp', '-DCISRES -DCHIRAL_K=1000.0',
-                                  residue_type+'_merged_rescue_fixed.pdb', 'rescue_soft')
-            if soft_pdb:
+        replaced = at_mod.replace_distorted_molecules(residue_type, source, residue_type+'_merged_rescue_fixed.pdb')
+        if replaced:
+            soft_pdb, soft_converged = em_pass(residue_type, 'em_'+residue_type+'_soft.mdp', '-DCISRES -DCHIRAL_K=1000.0',
+                                               residue_type+'_merged_rescue_fixed.pdb', 'rescue_soft')
+#### a rigidly fitted whole fragment can overlap its neighbours (e.g. a lipid tail in a packed membrane);
+#### if the rescue minimisation does not converge (infinite forces), the structure from before is kept
+            rescued = False
+            if soft_pdb and soft_converged:
                 at_mod.correct_minimised_residue(residue_type, soft_pdb, residue_type+'_merged_rescue_soft_fixed.pdb')
 #### gromacs() skips a command whose output exists, so the stalled structure is moved aside first
                 if os.path.exists(residue_type+'_merged.pdb'):
                     os.rename(residue_type+'_merged.pdb', residue_type+'_merged_min_stalled.pdb')
-                success, converged = strong_minimise(residue_type, residue_type+'_merged_rescue_soft_fixed.pdb', 'rescue_min')
+                rescue_success, rescued = strong_minimise(residue_type, residue_type+'_merged_rescue_soft_fixed.pdb', 'rescue_min')
+                if rescued:
+                    success, converged = rescue_success, rescued
+                elif os.path.exists(residue_type+'_merged_min_stalled.pdb'):
+                    if os.path.exists(residue_type+'_merged.pdb'):
+                        os.replace(residue_type+'_merged.pdb', residue_type+'_merged_rescue_failed.pdb')
+                    os.replace(residue_type+'_merged_min_stalled.pdb', residue_type+'_merged.pdb')
+            if not rescued:
+                print('\n'+residue_type+': replacing '+str(replaced)+' distorted molecules by whole fragments did not minimise '
+                      '(see '+g_var.working_dir+residue_type+'/MIN); the minimised structure from before is kept')
     os.chdir(g_var.working_dir)
     return success
 
