@@ -79,6 +79,8 @@ def _run() -> None:
     at_mod.sanity_check()
     if at_mod_pg.pg_present():
         at_mod_pg.collect_pg_residues()
+    elif g_var.args.pgl is not None:
+        print('Warning: -pgl was given but the CG input has no peptidoglycan residues; it is ignored')
 
     # --- Protein ---
     g_var.tc['r_i_t'] = time.time()

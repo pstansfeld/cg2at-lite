@@ -83,6 +83,9 @@ def read_cg_topology(file_name):
             includes = [line.split('"')[1] for line in top if line.strip().startswith('#include') and '"' in line]
         for include in includes:
             path = include if os.path.isabs(include) else os.path.join(directory, include)
+#### collect_input copies a relative include next to the .top under its own name
+            if not os.path.exists(path):
+                path = os.path.join(directory, os.path.basename(include))
             if os.path.exists(path):
                 found = read_cg_topology(path)
                 if found[0]:
@@ -227,9 +230,12 @@ def residue_states(links):
             if states[j]['acceptor'] is not None or states[i]['donor'] is not None:
                 raise TopologyError('PGL residue '+str(j+1)+' or '+str(i+1)+' takes part in two cross-links of the same kind')
             states[i]['donor'], states[j]['acceptor'] = j, i
+    stems_of = {state['stem_of'] for state in states}
     for k, (resname, beads) in enumerate(g_var.pg_residues):
         if resname in STEMS and states[k]['stem_of'] is None:
             print('Warning: stem '+resname+' '+str(k+1)+' is not bonded to a NAM')
+        if resname == 'NAM' and k not in stems_of:
+            print('Warning: NAM '+str(k+1)+' carries no stem; its lactyl C=O is left without the amide N')
         if resname == 'UUPEP' and states[k]['donor'] is None:
             print('Warning: tripeptide '+str(k+1)+' is not a cross-link donor; it is built with a free mDAP L-carboxylate')
         if resname == 'SPEP' and states[k]['donor'] is not None:
@@ -396,7 +402,8 @@ def write_pg_itp(states, links, cg_charge):
                 impropers.append((a, [x for x in n if x not in (o[0], nn[0])][0], nn[0], o[0]))
         elif atom_type[a] == 'CC' and len(n) == 3:
             ox = [x for x in n if atom_type[x] == 'OC']
-            impropers.append((a, [x for x in n if x not in ox][0], ox[1], ox[0]))
+            if len(ox) == 2:
+                impropers.append((a, [x for x in n if x not in ox][0], ox[1], ox[0]))
         elif atom_type[a] in ['NH1', 'NC2D1'] and len(n) == 3:
             h = [x for x in n if atom_type[x] in ['H', 'HCP1']]
             c = [x for x in n if atom_type[x] in ['C', 'CC2O1']]
