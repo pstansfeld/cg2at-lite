@@ -537,6 +537,13 @@ def minimise_merged(residue_type, input_file):
             if not rescued:
                 print('\n'+residue_type+': replacing '+str(replaced)+' distorted molecules by whole fragments did not minimise '
                       '(see '+g_var.working_dir+residue_type+'/MIN); the minimised structure from before is kept')
+#### CISRES holds each C=C at its fragment dihedral; one that still came out trans (e.g. placed across
+#### the barrier) is reported, not mended
+    if restrained and os.path.exists(residue_type+'_merged.pdb'):
+        turned, checked, molecules = at_mod.trans_double_bonds(residue_type, residue_type+'_merged.pdb')
+        if turned:
+            print('\nWarning: '+residue_type+': '+str(turned)+' of '+str(checked)+' cis double-bond dihedrals came out trans, in '
+                  +str(molecules)+' molecules ('+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
     os.chdir(g_var.working_dir)
     return success
 
