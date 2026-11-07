@@ -156,8 +156,8 @@ def links_from_topology(file_name):
 
 
 def fix_strand_closures(links):
-#### MemPrO closes a periodic strand with a bond from its first NAG B1 to its last NAM B4, whose C1 and
-#### O4 are both linked already; the closure that makes chemical sense is last NAM C1 -> first NAG O4
+#### MemPrO before 0.5.0 closed a periodic strand with a bond from its first sugar's B1 to its last sugar's B4,
+#### whose C1 and O4 are both linked already; the closure that makes chemical sense is last C1 -> first O4
     used = {}
     for i, a1, j, a2, kind in links:
         if kind == 'glycosidic':
@@ -175,8 +175,9 @@ def fix_strand_closures(links):
         else:
             out.append((i, a1, j, a2, kind))
     if fixed:
-        print('Note: '+str(fixed)+' periodic strand closures given as first NAG B1 - last NAM B4 were built as '
-              'last NAM C1 - first NAG O4 (the beta1,4 link that closes the strand)')
+        print('Note: '+str(fixed)+' periodic strand closures given as first sugar B1 - last sugar B4 (MemPrO before 0.5.0) '
+              'were built as last sugar C1 - first sugar O4 (the beta1,4 link that closes the strand).\n'
+              '      Those beads were not bonded in the CG model and the link may be strained: rebuild the layer with a newer MemPrO')
     return out
 
 
