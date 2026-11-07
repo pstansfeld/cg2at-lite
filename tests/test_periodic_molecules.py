@@ -62,6 +62,14 @@ class TestPeriodicMolecules(unittest.TestCase):
         # centred on a box corner, so the molecule is split across all three boundaries
         cls.xyz -= cls.xyz.mean(axis=0)
 
+    @classmethod
+    def tearDownClass(cls):
+        # g_var keeps the command line it read on import: drop the package so another test module
+        # importing it reads its own
+        for name in [m for m in sys.modules if m == 'cg2at_lite' or m.startswith('cg2at_lite.')]:
+            del sys.modules[name]
+        os.chdir(ROOT)
+
     def write(self, file_name, xyz, box=True):
         with open(file_name, 'w') as pdb:
             if box:
