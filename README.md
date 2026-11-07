@@ -459,8 +459,9 @@ cg2at_lite -c relaxed.gro -pgl topol.top -ff charmm36-cg2at -fg martini_3-0_char
   as patches and one `PGL` moleculetype is written, with angles, dihedrals, pairs, impropers and CMAP
   generated from the bond graph.
 - **Links.** Read from the CG topology given with `-pgl`. Without it they are inferred from bead
-  distances (minimum image), which is less safe. MemPrO closes a periodic strand with a first NAG B1 -
-  last NAM B4 bond; it is built as the last NAM C1 - first NAG O4 link.
+  distances (minimum image), which is less safe. MemPrO before 0.5.0 closed a periodic strand with a
+  first-sugar B1 - last-sugar B4 bond; it is built as the last sugar's C1 - first sugar's O4 link, but
+  those beads were not held together in the CG model, so rebuild such layers with a newer MemPrO.
 - **Relax the CG system first.** A freshly built Insane layer has its sugar beads at about half their
   bond lengths and is refused; minimise it and run a short CG MD (`periodic-molecules = yes`).
 - **Periodic molecule.** Every minimisation and NVT run gets `periodic-molecules = yes`; use it in your
