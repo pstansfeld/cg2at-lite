@@ -44,12 +44,13 @@ def fix_periodic_overlaps(coordinates):
     from scipy.spatial import cKDTree
     lengths = np.diag(box)
     xyz = np.array(coordinates, dtype=float)
+    rng = np.random.default_rng(0)  # fixed seed: the same input gives the same output
     for attempt in range(50):
         pairs = cKDTree(np.mod(xyz, lengths), boxsize=lengths).query_pairs(g_var.args.ov + 0.05)
         if not pairs:
             break
         for i in {min(pair) for pair in pairs}:
-            xyz[i] += np.random.uniform(-0.2, 0.2, 3)
+            xyz[i] += rng.uniform(-0.2, 0.2, 3)
     return [x for x in xyz]
 
 def read_solvent_conversion(cg_residue_type,cg_residues):

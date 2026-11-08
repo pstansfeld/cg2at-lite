@@ -4,7 +4,7 @@ so the beads around a junction can be in the mirror-image arrangement (Martini K
 molecules at the Kdo II anomeric carbon, CR2); each group then fits its beads but the centre between
 them comes out inverted. Here KLA at its fragment geometry has its Kdo II group turned about CR2 so CR2 is
 inverted, and correct_group_chirality must put the group back where the fragment has it relative to
-Kdo I, with the groups beyond it following. No GROMACS needed.
+Kdo I, keeping its centre, while the groups beyond it stay where they were placed. No GROMACS needed.
 
 Run from the repository root with:  python -m unittest discover tests
 """
@@ -87,11 +87,10 @@ class TestGroupChirality(unittest.TestCase):
         self.assertGreaterEqual(mended, 1)
         placed = {x: v['coord'] for x, v in residue.items()}
         self.assertEqual(handedness(placed, cr2, near), handedness(self.xyz, cr2, near))
-        # Kdo II is back where the fragment has it relative to Kdo I, and the groups beyond came with it
-        for g in [kdo2] + beyond:
-            moved = np.array([placed[x] for x in self.groups[g]])
-            frag = np.array([self.xyz[x] for x in self.groups[g]])
-            self.assertLess(np.sqrt(np.mean(np.sum((moved - frag) ** 2, axis=1))), 0.05)
+        # Kdo II takes the fragment's orientation but keeps its centre (where it was fitted to its beads), and
+        # every junction beyond is right too (each group beyond is mended at its own junction, not carried along)
+        _, again = at_mod.correct_group_chirality(residue, RES, self.frag, self.groups)
+        self.assertEqual(again, 0)
 
     def test_correct_placement_is_left_alone(self):
         residue = {x: {'coord': p.copy()} for x, p in self.xyz.items()}

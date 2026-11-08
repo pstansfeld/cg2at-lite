@@ -85,14 +85,17 @@ class TestPeriodicMolecules(unittest.TestCase):
     def test_split_molecule_is_not_distorted(self):
         split = self.write('split.pdb', self.wrapped())
         self.assertGreater(np.ptp(self.wrapped(), axis=0).max(), BOX / 2)  # it is split
-        self.assertEqual(self.at_mod.replace_distorted_molecules(RES, split, 'split_out.pdb'), 0)
+        self.assertEqual(self.at_mod.replace_trapped_molecules(RES, split, split, 'split_out.pdb'), 0)
         with open(split) as a, open('split_out.pdb') as b:
             self.assertEqual(a.read(), b.read())
 
     def test_split_molecule_without_box_is_flagged(self):
         # without a CRYST1 record nothing is made whole: the split molecule is still caught as broken
         split = self.write('split_nobox.pdb', self.wrapped(), box=False)
-        self.assertEqual(self.at_mod.replace_distorted_molecules(RES, split, 'split_nobox_out.pdb'), 1)
+        flagged = []
+        self.at_mod.apply_per_molecule(RES, split, os.devnull,
+                                       lambda residue, frag: flagged.append(self.at_mod.distorted(residue, RES, frag)) or residue)
+        self.assertEqual(flagged, [True])
 
     def test_trans_double_bond_is_counted(self):
         at_mod, frag = self.at_mod, self.frag

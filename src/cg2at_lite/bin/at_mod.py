@@ -653,28 +653,270 @@ def distorted(residue, resname, frag_template):
                 return True
     return False
 
-def replace_distorted_molecules(residue_type, pdb_in, pdb_out):
-#### every distorted molecule of a per-residue structure is replaced by the whole fragment, rigidly fitted
-#### to its heavy atoms: it loses the detail of its fit to the CG beads but keeps the fragment's rings,
-#### stereocentres and links, and minimises cleanly from there. Returns the number replaced
-    replaced = []
-    def replace(residue, frag_template):
-        if not distorted(residue, residue_type, frag_template):
-            return residue
-        whole = {number: np.array(atom['coord'], dtype=float) / g_var.sf
-                 for group in frag_template.values() for bead in group.values() for number, atom in bead.items()}
-        heavy = [n for n, atom in ((n, a) for group in frag_template.values() for bead in group.values() for n, a in bead.items())
-                 if not gen.is_hydrogen(atom['atom']) and n in residue]
-        P = np.array([whole[n] for n in heavy]); Q = np.array([residue[n]['coord'] for n in heavy], dtype=float)
-        pc, qc = P.mean(axis=0), Q.mean(axis=0)
-        rot = kabsch_rotate(P - pc, Q - qc)
-        for number in residue:
-            if number in whole:
-                residue[number]['coord'] = (whole[number] - pc).dot(rot) + qc
-        replaced.append(1)
+def fragment_groups(frag_template):
+#### {group: [atom numbers]} of a fragment's rigid groups ([ GROUPS ] in its .top; a bead is its own group otherwise)
+    return {group: [number for bead in frag_template[group].values() for number in bead] for group in frag_template}
+
+def trapped(residue, resname, frag_template):
+#### a molecule caught in a geometry minimisation cannot leave: a stereocentre inverted or splayed flat, a
+#### bond squashed below 85% of its length (a centre dragged through), or a ring bond stretched over 10%
+#### (a ring held open). A stretched bond elsewhere (e.g. between acyl chains still pulling apart) is not
+#### a trap and is left to the minimisation
+    coords, bonded = fragment_template(resname, frag_template)
+    ring_atoms = _ring_atoms(resname, bonded)
+    for a in coords:
+        for b in bonded[a]:
+            if b > a and a in residue and b in residue:
+                length = np.linalg.norm(np.array(residue[a]['coord'], dtype=float) - np.array(residue[b]['coord'], dtype=float))
+                reference = np.linalg.norm(coords[a] - coords[b]) / g_var.sf
+                if length < 0.85 * reference or (a in ring_atoms and b in ring_atoms and length > 1.1 * reference):
+                    return True
+    for c, three, fourth, carried, sign in stereo_template(resname, frag_template):
+        if any(x not in residue for x in [c] + three):
+            continue
+        v = [np.array(residue[x]['coord'], dtype=float) - np.array(residue[c]['coord'], dtype=float) for x in three]
+        if np.sign(np.dot(v[0], np.cross(v[1], v[2]))) != sign:
+            return True
+        for a, b in itertools.combinations(v, 2):
+            if np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)) < math.cos(math.radians(150)):
+                return True
+    return False
+
+def _ring_atoms(resname, bonded):
+    if resname not in _ring_atom_cache:
+        _ring_atom_cache[resname] = {atom for ring in six_membered_rings(bonded) for atom in ring}
+    return _ring_atom_cache[resname]
+
+def count_trapped(residue_type, pdb_in):
+    count = []
+    def check(residue, frag_template):
+        if trapped(residue, residue_type, frag_template):
+            count.append(1)
         return residue
-    apply_per_molecule(residue_type, pdb_in, pdb_out, replace)
-    return len(replaced)
+    apply_per_molecule(residue_type, pdb_in, os.devnull, check)
+    return len(count)
+
+def replace_trapped_molecules(residue_type, pdb_in, placed_pdb, pdb_out):
+#### every trapped molecule of a minimised per-residue structure goes back to its own placement (its fit
+#### to its CG beads, from placed_pdb: same molecules, same atom order), so it can be minimised again
+#### among its now relaxed neighbours; every other molecule keeps its minimised coordinates. Nothing is
+#### replaced by a whole-fragment fit, which would throw away the conformation built from the CG beads.
+#### Returns the number of molecules put back
+    flagged, index = [], [0]
+    def check(residue, frag_template):
+        if trapped(residue, residue_type, frag_template):
+            flagged.append(index[0])
+        index[0] += 1
+        return residue
+    apply_per_molecule(residue_type, pdb_in, os.devnull, check)
+    if not flagged:
+        if pdb_in != pdb_out:
+            with open(pdb_in) as source, open(pdb_out, 'w') as out:
+                out.write(source.read())
+        return 0
+    with open(pdb_in) as source:
+        lines = source.readlines()
+    with open(placed_pdb) as source:
+        placed = [line for line in source if line.startswith('ATOM')]
+    rows = [k for k, line in enumerate(lines) if line.startswith('ATOM')]
+    n_atoms = len(rows) // index[0] if index[0] else 0
+    if not n_atoms or len(placed) != len(rows):
+        return 0
+    for m in flagged:
+        for k in range(m * n_atoms, (m + 1) * n_atoms):
+            lines[rows[k]] = lines[rows[k]][:30] + placed[k][30:54] + lines[rows[k]][54:]
+    with open(pdb_out, 'w') as out:
+        out.writelines(lines)
+    return len(flagged)
+
+def restore_trapped_groups(residue_type, pdb_in, pdb_out):
+#### for molecules still trapped after going back to their bead fit and minimising again (the same path
+#### led into the same trap): each rigid group of the fragment (a sugar ring, a bead's atoms) is superposed
+#### onto that molecule's own current atoms of the group, which restores the group's own geometry where it
+#### sits (a ring held open closes, a squashed centre opens out); the junctions between groups then take
+#### the fragment's handedness, and bonds through a ring are moved out. Atoms outside a group do not move
+#### and no molecule is fitted as a whole. Returns the number of molecules restored
+    restored = []
+    def restore(residue, frag_template):
+        if not trapped(residue, residue_type, frag_template):
+            return residue
+        groups = fragment_groups(frag_template)
+        frag_xyz = {number: np.array(atom['coord'], dtype=float) / g_var.sf
+                    for group in frag_template.values() for bead in group.values() for number, atom in bead.items()}
+        for group, atoms in groups.items():
+            heavy = [n for n in atoms if n in residue and n in frag_xyz
+                     and not gen.is_hydrogen(frag_atom_name(frag_template, n))]
+            if len(heavy) < 3:
+                continue
+            P = np.array([frag_xyz[n] for n in heavy])
+            Q = np.array([residue[n]['coord'] for n in heavy], dtype=float)
+            pc, qc = P.mean(axis=0), Q.mean(axis=0)
+            rot = kabsch_rotate(P - pc, Q - qc)
+            for n in atoms:
+                if n in residue and n in frag_xyz:
+                    residue[n]['coord'] = (frag_xyz[n] - pc).dot(rot) + qc
+        if len(groups) > 1:
+            residue, _ = correct_group_chirality(residue, residue_type, frag_template, groups, 1.0 / g_var.sf)
+        restored.append(1)
+        return residue
+    apply_per_molecule(residue_type, pdb_in, pdb_out, restore)
+    if restored:
+        unthread_rings(residue_type, pdb_out, pdb_out)
+    return len(restored)
+
+def threaded_rings(residue_type, molecules, frag_template, box):
+#### molecules: [{atom number: coord}] made whole. Returns [(molecule, ring, molecule, (a, b), shift)] for
+#### every heavy bond passing through a six-membered ring of another molecule (or of the same molecule,
+#### away from the ring): a chain placed through a neighbour's sugar ring, which no minimisation can
+#### pull out (the ring stretches around it). shift is the in-plane move that takes the bond out past
+#### the ring's edge
+    coords, bonded = fragment_template(residue_type, frag_template)
+    rings = six_membered_rings(bonded)
+    if not rings or not molecules:
+        return []
+    bonds = [(a, b) for a in coords for b in bonded[a] if b > a]
+    owner, pair, mid = [], [], []
+    for m, mol in enumerate(molecules):
+        for a, b in bonds:
+            if a in mol and b in mol:
+                owner.append(m)
+                pair.append((a, b))
+                mid.append((np.asarray(mol[a], dtype=float) + np.asarray(mol[b], dtype=float)) / 2)
+    if not mid:
+        return []
+    mid = np.array(mid)
+    orthorhombic = box is not None and np.abs(box - np.diag(np.diag(box))).max() < 1e-6
+    if orthorhombic:
+        lengths = np.diag(box)
+        tree = cKDTree(np.mod(mid, lengths), boxsize=lengths)
+    else:
+        tree = cKDTree(mid)
+    found = []
+    for m, mol in enumerate(molecules):
+        for ring in rings:
+            if any(x not in mol for x in ring):
+                continue
+            P = np.array([mol[x] for x in ring], dtype=float)
+            centre = P.mean(axis=0)
+            normal = np.linalg.svd(P - centre)[2][2]
+            radius = np.linalg.norm(P - centre, axis=1).max()
+            query = np.mod(centre, lengths) if orthorhombic else centre
+            for k in tree.query_ball_point(query, radius + 1.0):
+                a, b = pair[k]
+                if owner[k] == m and (a in ring or b in ring or bonded[a] & set(ring) or bonded[b] & set(ring)):
+                    continue
+                other = molecules[owner[k]]
+                A = centre + minimum_image(np.asarray(other[a], dtype=float) - centre, box)
+                B = A + minimum_image(np.asarray(other[b], dtype=float) - A, box)
+                da, db = np.dot(A - centre, normal), np.dot(B - centre, normal)
+                if da * db > 0 or abs(da - db) < 1e-9:
+                    continue
+                p = A + (B - A) * da / (da - db)
+#### inside the ring: the winding angle of the crossing point about the ring's (projected) outline
+                v = [(x - p) - np.dot(x - p, normal) * normal for x in P]
+                winding = sum(math.atan2(np.dot(np.cross(v[i], v[(i + 1) % 6]), normal), np.dot(v[i], v[(i + 1) % 6]))
+                              for i in range(6))
+                if abs(winding) < math.pi:
+                    continue
+                radial = (p - centre) - np.dot(p - centre, normal) * normal
+                if np.linalg.norm(radial) < 0.1:
+                    radial = np.cross(normal, [1.0, 0, 0] if abs(normal[0]) < 0.9 else [0, 1.0, 0])
+                radial /= np.linalg.norm(radial)
+                distance = np.dot(p - centre, radial)
+                found.append((m, ring, owner[k], (a, b), radial * (radius + 1.6 - distance)))
+    return found
+
+def unthread_rings(residue_type, pdb_in, pdb_out, passes=3):
+#### takes every bond placed through a six-membered ring (threaded_rings) out past the ring's edge: its
+#### two atoms move in the ring's plane, with their hydrogens, and their other bonded heavy atoms move half
+#### as far. Only those few atoms move; the rings and the rest of each molecule keep their fit to the CG
+#### beads. Returns the number of threaded bonds found on the first pass
+    location = gen.fragment_location(residue_type)
+    frag_template, _ = get_atomistic(location, residue_type)
+    coords, bonded = fragment_template(residue_type, frag_template)
+    if not six_membered_rings(bonded):
+        if pdb_in != pdb_out:
+            gen.file_copy_and_check(pdb_in, pdb_out)
+        return 0
+    with open(pdb_in) as pdb_input:
+        box = pdb_box(pdb_input.readlines())
+    h_of = {}
+    for h, parent in hydrogen_parents(residue_type, frag_template).items():
+        h_of.setdefault(parent, []).append(h)
+    first, source = None, pdb_in
+    for attempt in range(passes):
+        molecules = []
+        def collect(residue, frag):
+            molecules.append({n: np.array(atom['coord'], dtype=float) for n, atom in residue.items()})
+            return residue
+        apply_per_molecule(residue_type, source, os.devnull, collect)
+        found = threaded_rings(residue_type, molecules, frag_template, box)
+        first = len(found) if first is None else first
+        if not found:
+            break
+        moves = {}
+        def add(m, n, shift):
+            if np.linalg.norm(shift) > np.linalg.norm(moves.get((m, n), np.zeros(3))):
+                moves[(m, n)] = shift
+        for m, ring, o, (a, b), shift in found:
+            for x in (a, b):
+                add(o, x, shift)
+                for h in h_of.get(x, []):
+                    add(o, h, shift)
+                for y in bonded[x] - {a, b}:
+                    add(o, y, shift / 2)
+                    for h in h_of.get(y, []):
+                        add(o, h, shift / 2)
+        index = [0]
+        def move(residue, frag):
+            m = index[0]
+            index[0] += 1
+            for n in residue:
+                if (m, n) in moves:
+                    residue[n]['coord'] = np.array(residue[n]['coord'], dtype=float) + moves[(m, n)]
+            return residue
+        apply_per_molecule(residue_type, source, pdb_out, move)
+        source = pdb_out
+    if source != pdb_out:
+        gen.file_copy_and_check(pdb_in, pdb_out)
+    return first
+
+ELEMENT_MASS = {'H': 1.008, 'C': 12.011, 'N': 14.007, 'O': 15.999, 'P': 30.974, 'S': 32.06}
+
+def np_bead_rmsd(residue_type, pdb_in):
+#### per-molecule RMSD (A) of the all-atom bead centres of mass (the fragment's atom -> bead mapping) to
+#### that molecule's CG beads: how far each molecule has moved from the CG conformation it was built
+#### from. Molecules in the order they were read from the CG input; [] when that is not available
+    cg = list(g_var.cg_residues.get(residue_type, {}).values()) if hasattr(g_var, 'cg_residues') else []
+    if not cg:
+        return []
+    with open(pdb_in) as pdb_input:
+        box = pdb_box(pdb_input.readlines())
+    out, index = [], [0]
+    def measure(residue, frag_template):
+        k = index[0]
+        index[0] += 1
+        if k >= len(cg):
+            return residue
+        d2 = []
+        for group in frag_template.values():
+            for bead, atoms in group.items():
+                if bead not in cg[k] or not atoms:
+                    continue
+                total, mass = np.zeros(3), 0.0
+                for number, atom in atoms.items():
+                    if number in residue:
+                        m = ELEMENT_MASS.get(atom['atom'].lstrip('0123456789')[:1], 12.0)
+                        total += m * np.array(residue[number]['coord'], dtype=float)
+                        mass += m
+                if mass:
+                    ref = np.array(cg[k][bead]['coord'], dtype=float)
+                    d2.append(np.sum(minimum_image(total / mass - ref, box)**2))
+        if d2:
+            out.append(float(np.sqrt(np.mean(d2))))
+        return residue
+    apply_per_molecule(residue_type, pdb_in, os.devnull, measure)
+    return out
 
 def pdb_box(lines):
 #### box vectors (rows, Angstrom) from a pdb's CRYST1 record, or None without one
@@ -1039,12 +1281,15 @@ def group_junctions(resname, frag_template, groups):
     _junction_cache[resname] = ({g: (parent[g], descendants[g]) for g in order}, order, checks, frag_xyz)
     return _junction_cache[resname]
 
-def correct_group_chirality(residue, resname, frag_template, groups):
+def correct_group_chirality(residue, resname, frag_template, groups, scale=1.0):
 #### residue: {atom number: atom} with every group placed. Walks out from the middle of the molecule;
-#### where a stereocentre at a group's bond to its parent has the wrong handedness, the group is put
-#### where the fragment has it relative to its parent (superposing the fragment on the parent's placed
-#### atoms) and everything beyond it follows rigidly
+#### where a stereocentre at a group's bond to its parent has the wrong handedness, the group is turned
+#### to the fragment's orientation relative to its parent (superposing the fragment on the parent's placed
+#### atoms), keeping its own centre where possible; no other group moves. scale: 1 on freshly placed fragments, 1/sf on a
+#### minimised structure
     family, order, checks, frag_xyz = group_junctions(resname, frag_template, groups)
+    if scale != 1.0:
+        frag_xyz = {x: xyz * scale for x, xyz in frag_xyz.items()}
     mended = 0
     for g in order:
         p, beyond = family[g]
@@ -1070,15 +1315,22 @@ def correct_group_chirality(residue, resname, frag_template, groups):
         rot = kabsch_rotate(A - ac, B - bc)
         old = np.array([residue[x]['coord'] for x in moving], dtype=float)
         new = np.array([(frag_xyz[x] - ac).dot(rot) + bc for x in moving])
-#### the groups beyond follow the same rigid move that took this group from its fit to its new place
-        oc, nc = old.mean(axis=0), new.mean(axis=0)
-        follow = kabsch_rotate(old - oc, new - nc)
+#### the group takes the fragment's orientation relative to its parent but keeps its own centre, where
+#### it was fitted to its beads; only if that still leaves the centre inverted does it take the
+#### fragment's position as well. Nothing else moves: the groups beyond keep their fit to their beads
+#### (moving them with it took whole acyl chains off their beads), and the bonds to them are left to the
+#### minimisation
+        kept = new - new.mean(axis=0) + old.mean(axis=0)
+        trial = {x: np.array(residue[x]['coord'], dtype=float) for x in residue}
+        for x, xyz in zip(moving, kept):
+            trial[x] = xyz
+        def handed(c, near):
+            v = [trial[y] - trial[c] for y in near]
+            return np.sign(np.dot(v[0], np.cross(v[1], v[2])))
+        if all(handed(c, near) == sign for c, near, sign in checks[g] if all(x in trial for x in (c,) + near)):
+            new = kept
         for x, xyz in zip(moving, new):
             residue[x]['coord'] = xyz
-        for h in beyond:
-            for x in groups[h]:
-                if x in residue:
-                    residue[x]['coord'] = (np.array(residue[x]['coord'], dtype=float) - oc).dot(follow) + nc
         mended += 1
     return residue, mended
 

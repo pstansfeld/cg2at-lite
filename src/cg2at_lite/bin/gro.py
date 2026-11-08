@@ -530,38 +530,71 @@ def minimise_merged(residue_type, input_file):
 #### and the strong restraints are applied from there
     restrained = residue_type in g_var.np_residues and os.path.exists(cisres_itp_name(residue_type))
     if restrained:
+#### a chain fitted through a neighbour's ring (e.g. a sugar of a packed glycolipid) cannot be pulled
+#### out by minimisation: the ring stretches around it and steepest descent stalls. Those few bonds are
+#### moved out past the ring's edge first
+        unthreaded = residue_type+'_all_unthreaded.pdb'
+        if not os.path.exists(unthreaded):
+            threaded = at_mod.unthread_rings(residue_type, input_file, unthreaded)
+            if threaded:
+                print('\n'+residue_type+': '+str(threaded)+' bonds placed through a ring were moved out before minimisation')
+        input_file = unthreaded
         soft_input = soft_minimise(residue_type, input_file)
         if soft_input:
             input_file = soft_input
     success, converged = strong_minimise(residue_type, input_file, 'min')
 #### a soft pass can converge with a centre dragged through by a substituent placed on the wrong side;
 #### mended by reflection, that centre is left splayed flat and the strong pass stalls on it. Or the strong
-#### pass converges with a ring held open by its own restraints. The molecules left like that are replaced
-#### by the rigidly fitted whole fragment, and the soft and strong passes are repeated from there (once)
+#### pass converges with a ring held open by its own restraints. The few molecules caught like that
+#### (at_mod.trapped) go back to their own fit to the CG beads, among their now relaxed neighbours, and
+#### the soft and strong passes are repeated from there (once). No molecule is replaced by a whole-
+#### fragment fit, which would throw away the conformation built from the CG beads
     source = residue_type+'_merged.pdb' if converged else input_file
     if restrained and os.path.exists(source):
-        replaced = at_mod.replace_distorted_molecules(residue_type, source, residue_type+'_merged_rescue_fixed.pdb')
-        if replaced:
+        mended = at_mod.replace_trapped_molecules(residue_type, source, unthreaded, residue_type+'_merged_mended.pdb')
+        if mended:
+            print('\n'+residue_type+': '+str(mended)+' molecules trapped in the minimisation were put back to their CG fit and minimised again')
             soft_pdb, soft_converged = em_pass(residue_type, 'em_'+residue_type+'_soft.mdp', '-DCISRES -DCHIRAL_K=1000.0',
-                                               residue_type+'_merged_rescue_fixed.pdb', 'rescue_soft')
-#### a rigidly fitted whole fragment can overlap its neighbours (e.g. a lipid tail in a packed membrane);
-#### if the rescue minimisation does not converge (infinite forces), the structure from before is kept
+                                               residue_type+'_merged_mended.pdb', 'mended_soft')
+#### if the minimisation from the mended structure does not converge, the structure from before is kept
             rescued = False
             if soft_pdb and soft_converged:
-                at_mod.correct_minimised_residue(residue_type, soft_pdb, residue_type+'_merged_rescue_soft_fixed.pdb')
+                at_mod.correct_minimised_residue(residue_type, soft_pdb, residue_type+'_merged_mended_soft_fixed.pdb')
 #### gromacs() skips a command whose output exists, so the stalled structure is moved aside first
                 if os.path.exists(residue_type+'_merged.pdb'):
                     os.rename(residue_type+'_merged.pdb', residue_type+'_merged_min_stalled.pdb')
-                rescue_success, rescued = strong_minimise(residue_type, residue_type+'_merged_rescue_soft_fixed.pdb', 'rescue_min')
+                rescue_success, rescued = strong_minimise(residue_type, residue_type+'_merged_mended_soft_fixed.pdb', 'mended_min')
                 if rescued:
                     success, converged = rescue_success, rescued
                 elif os.path.exists(residue_type+'_merged_min_stalled.pdb'):
                     if os.path.exists(residue_type+'_merged.pdb'):
-                        os.replace(residue_type+'_merged.pdb', residue_type+'_merged_rescue_failed.pdb')
+                        os.replace(residue_type+'_merged.pdb', residue_type+'_merged_mended_failed.pdb')
                     os.replace(residue_type+'_merged_min_stalled.pdb', residue_type+'_merged.pdb')
             if not rescued:
-                print('\n'+residue_type+': replacing '+str(replaced)+' distorted molecules by whole fragments did not minimise '
+                print('\n'+residue_type+': re-minimising '+str(mended)+' trapped molecules from their CG fit did not converge '
                       '(see '+g_var.working_dir+residue_type+'/MIN); the minimised structure from before is kept')
+#### a molecule still trapped (e.g. one that walked back into the same trap from its bead fit) has its
+#### rigid groups restored where they sit (at_mod.restore_trapped_groups) and the strong pass is run once
+#### more; that result is kept if it leaves fewer molecules trapped
+    if restrained and os.path.exists(residue_type+'_merged.pdb') and not os.path.exists(residue_type+'_merged_restored.pdb'):
+        before = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb')
+        if before:
+            at_mod.restore_trapped_groups(residue_type, residue_type+'_merged.pdb', residue_type+'_merged_restored.pdb')
+            os.rename(residue_type+'_merged.pdb', residue_type+'_merged_before_restore.pdb')
+            restore_success, restore_converged = strong_minimise(residue_type, residue_type+'_merged_restored.pdb', 'restored_min')
+            after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb') if os.path.exists(residue_type+'_merged.pdb') else before
+            if after < before:
+                success, converged = restore_success, restore_converged
+                print('\n'+residue_type+': '+str(before)+' molecules still trapped had their rigid groups restored in place; '+str(after)+' left')
+            else:
+                if os.path.exists(residue_type+'_merged.pdb'):
+                    os.replace(residue_type+'_merged.pdb', residue_type+'_merged_restore_failed.pdb')
+                os.replace(residue_type+'_merged_before_restore.pdb', residue_type+'_merged.pdb')
+                print('\nWarning: '+residue_type+': '+str(before)+' molecules are still trapped (a ring held open or a centre squashed; '
+                      'see '+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
+#### how far each molecule has moved from the CG beads it was built from
+    if residue_type in g_var.np_residues and os.path.exists(residue_type+'_merged.pdb'):
+        report_cg_fidelity(residue_type, residue_type+'_merged.pdb')
 #### CISRES holds each C=C at its fragment dihedral; one that still came out trans (e.g. placed across
 #### the barrier) is reported, not mended
     if restrained and os.path.exists(residue_type+'_merged.pdb'):
@@ -571,6 +604,25 @@ def minimise_merged(residue_type, input_file):
                   +str(molecules)+' molecules ('+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
     os.chdir(g_var.working_dir)
     return success
+
+CG_FIDELITY_WARN = 3.0
+
+def report_cg_fidelity(residue_type, pdb):
+#### per-molecule RMSD of the all-atom bead centres to the CG beads; molecules beyond CG_FIDELITY_WARN (A)
+#### are named in <residue>_cg_fidelity.dat and reported
+    rmsd = at_mod.np_bead_rmsd(residue_type, pdb)
+    if not rmsd:
+        return rmsd
+    far = [(k + 1, r) for k, r in enumerate(rmsd) if r > CG_FIDELITY_WARN]
+    with open(residue_type+'_cg_fidelity.dat', 'w') as out:
+        out.write('# molecule  bead RMSD to CG (A)\n')
+        for k, r in enumerate(rmsd):
+            out.write('{:8d}  {:6.2f}\n'.format(k + 1, r))
+    print('\n'+residue_type+': bead RMSD to CG per molecule: median {:.2f} A, max {:.2f} A'.format(float(np.median(rmsd)), max(rmsd)))
+    if far:
+        print('Warning: '+residue_type+': '+str(len(far))+' of '+str(len(rmsd))+' molecules are more than '+str(CG_FIDELITY_WARN)+
+              ' A from their CG beads (see '+g_var.working_dir+residue_type+'/'+residue_type+'_cg_fidelity.dat)')
+    return rmsd
 
 def strong_minimise(residue_type, input_file, name):
 #### the final minimisation of a residue type (full stereocentre restraints) into <residue>_merged.pdb;
