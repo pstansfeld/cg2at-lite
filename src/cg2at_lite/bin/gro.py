@@ -268,7 +268,8 @@ def write_cisres_file(file_name, restraints):
         cisres.write('[ dihedral_restraints ]\n; ai   aj   ak   al  type     phi  dphi   kfac\n')
         for ai, aj, ak, al, phi, dphi, kfac in restraints:
             kfac = kfac if isinstance(kfac, str) else '{:7.1f}'.format(kfac)
-            cisres.write('{:5d}{:5d}{:5d}{:5d}    1 {:8.2f}  {:4.1f}  {}\n'.format(ai, aj, ak, al, phi, dphi, kfac))
+#### space-separated: fixed 5-wide columns ran together above atom 9999 (a large PGL molecule)
+            cisres.write('{:5d} {:5d} {:5d} {:5d}    1 {:8.2f}  {:4.1f}  {}\n'.format(ai, aj, ak, al, phi, dphi, kfac))
 
 #### referenced when a topology has no restraints, so the CISRES define is never reported as unused
 CISRES_UNUSED = '#ifdef CISRES\n; no double-bond, ring or stereocentre restraints\n#endif\n'

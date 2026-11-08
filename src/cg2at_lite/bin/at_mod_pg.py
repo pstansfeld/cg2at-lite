@@ -436,13 +436,13 @@ def write_pg_itp(states, links, cg_charge):
         for number, atom in enumerate(g_var.pg_atoms, 1):
             itp.write('{:7d} {:>8s} {:6d} {:>6s} {:>6s} {:7d} {:8.3f} {:9.4f}   ; {}\n'.format(
                 number, atom['type'], atom['resid'], atom['resname'], atom['name'], number, atom['q'], atom['mass'], atom['bead']))
-        itp.write('\n[ bonds ]\n'+''.join('{:7d}{:7d}  1\n'.format(a + 1, b + 1) for a, b in bonds))
-        itp.write('\n[ pairs ]\n'+''.join('{:7d}{:7d}  1\n'.format(a + 1, b + 1) for a, b in pairs))
-        itp.write('\n[ angles ]\n'+''.join('{:7d}{:7d}{:7d}  5\n'.format(a + 1, b + 1, c + 1) for a, b, c in angles))
-        itp.write('\n[ dihedrals ]\n'+''.join('{:7d}{:7d}{:7d}{:7d}  9\n'.format(*[x + 1 for x in d]) for d in dihedrals))
-        itp.write('\n[ dihedrals ]\n'+''.join('{:7d}{:7d}{:7d}{:7d}  2\n'.format(*[x + 1 for x in d]) for d in impropers))
+        itp.write('\n[ bonds ]\n'+''.join('{:7d} {:7d}  1\n'.format(a + 1, b + 1) for a, b in bonds))
+        itp.write('\n[ pairs ]\n'+''.join('{:7d} {:7d}  1\n'.format(a + 1, b + 1) for a, b in pairs))
+        itp.write('\n[ angles ]\n'+''.join('{:7d} {:7d} {:7d}  5\n'.format(a + 1, b + 1, c + 1) for a, b, c in angles))
+        itp.write('\n[ dihedrals ]\n'+''.join('{:7d} {:7d} {:7d} {:7d}  9\n'.format(*[x + 1 for x in d]) for d in dihedrals))
+        itp.write('\n[ dihedrals ]\n'+''.join('{:7d} {:7d} {:7d} {:7d}  2\n'.format(*[x + 1 for x in d]) for d in impropers))
         if cmaps:
-            itp.write('\n[ cmap ]\n'+''.join('{:7d}{:7d}{:7d}{:7d}{:7d}  1\n'.format(*[x + 1 for x in c]) for c in cmaps))
+            itp.write('\n[ cmap ]\n'+''.join('{:7d} {:7d} {:7d} {:7d} {:7d}  1\n'.format(*[x + 1 for x in c]) for c in cmaps))
     print('PGL topology: '+str(len(g_var.pg_atoms))+' atoms, net charge '+str(round(charge, 3))+', '+str(len(cmaps))+' CMAP terms')
     if cg_charge:
         report_charge(cg_charge)
