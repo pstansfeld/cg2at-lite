@@ -495,6 +495,12 @@ def correct_stereocentres(residue, resname, frag_template):
         v = [X[x] - X[c] for x in three]
         if np.sign(np.dot(v[0], np.cross(v[1], v[2]))) == sign:
             continue
+#### a ring atom is mended by swapping its two substituents outside the ring instead: reflecting the
+#### centre itself flips the ring's pucker there, and the ring restraints then stall the minimisation
+#### (GlcN I C3 of lipid A, dragged through by its ester in the soft pass)
+        mended = swap_ring_substituents(residue, resname, frag_template, c)
+        if mended is not None:
+            continue
         normal = np.cross(X[three[1]] - X[three[0]], X[three[2]] - X[three[0]])
         normal /= np.linalg.norm(normal)
         new_c = X[c] - 2 * np.dot(X[c] - X[three[0]], normal) * normal
@@ -506,6 +512,71 @@ def correct_stereocentres(residue, resname, frag_template):
         for h in carried:
             residue[h]['coord'] = X[h] + shift
     return residue
+
+_ring_atom_cache = {}
+
+def swap_ring_substituents(residue, resname, frag_template, c):
+#### inverts a ring stereocentre without moving the ring: its two substituents outside the ring (a
+#### heavy atom and a hydrogen) are put in the two tetrahedral positions outside the ring, the way round that
+#### gives the fragment's handedness, at their fragment bond lengths. A substituent's hydrogens move
+#### with it, and so does a small group hanging off it (up to 4 heavy atoms, e.g. a carboxylate or a
+#### hydroxymethyl); a larger one (an acyl chain, the rest of the molecule) stays, leaving one stretched
+#### bond for the minimisation. Returns None when c is not in a six-membered ring of the fragment (it is
+#### then mended by reflection), False for a ring centre left as it is, True when mended
+    coords, bonded = fragment_template(resname, frag_template)
+    if resname not in _ring_atom_cache:
+        _ring_atom_cache[resname] = {atom for ring in six_membered_rings(bonded) for atom in ring}
+    ring_atoms = _ring_atom_cache[resname]
+    if c not in ring_atoms:
+        return None
+    parents = hydrogen_parents(resname, frag_template)
+    in_ring = [n for n in bonded[c] if n in ring_atoms]
+    outside = [n for n in bonded[c] if n not in ring_atoms] + [h for h, p in parents.items() if p == c]
+#### only a centre with a hydrogen outside the ring: with two heavy substituents (e.g. the anomeric
+#### carbon of Kdo, between its carboxylate and the rest of lipid A) one of them would have to move a
+#### whole branch's length, so it is left to the minimisation, as is any other ring centre
+    if (len(in_ring) != 2 or len(outside) != 2 or any(x not in residue for x in [c] + outside)
+            or not any(gen.is_hydrogen(frag_atom_name(frag_template, x)) for x in outside)):
+        return False
+    def group(root):
+        if gen.is_hydrogen(frag_atom_name(frag_template, root)):
+            return [root]
+        heavy, stack = {root}, [root]
+        while stack:
+            for n in bonded[stack.pop()]:
+                if n != c and n not in heavy:
+                    heavy.add(n)
+                    stack.append(n)
+        if len(heavy) > 4:
+            heavy = {root}
+        return list(heavy) + [h for h, p in parents.items() if p in heavy]
+    unit = lambda d: d / np.linalg.norm(d)
+    P = {x: np.array(residue[x]['coord'], dtype=float) for x in [c] + in_ring + outside}
+    C = P[c]
+#### the two tetrahedral positions outside the ring: about the bisector pointing away from the ring,
+#### either side of the ring atoms' plane (a centre dragged flat has both substituents on one side, so
+#### swapping them would not mend it)
+    away = -unit(unit(P[in_ring[0]] - C) + unit(P[in_ring[1]] - C))
+    normal = unit(np.cross(P[in_ring[0]] - C, P[in_ring[1]] - C))
+    half = math.radians(54.75)
+    slots = [unit(away * math.cos(half) + normal * math.sin(half)), unit(away * math.cos(half) - normal * math.sin(half))]
+    sign = next(s for centre, three, fourth, carried, s in stereo_template(resname, frag_template) if centre == c)
+    three = next(t for centre, t, fourth, carried, s in stereo_template(resname, frag_template) if centre == c)
+#### bond lengths from the fragment: a centre dragged through can leave a bond squashed or stretched
+    frag_xyz = {number: np.array(atom['coord'], dtype=float) for group in frag_template.values()
+                for bead in group.values() for number, atom in bead.items()}
+    length = {x: np.linalg.norm(frag_xyz[x] - frag_xyz[c]) / g_var.sf for x in outside}
+    for order in (slots, slots[::-1]):
+        new = {x: C + length[x] * d for x, d in zip(outside, order)}
+        v = [(new[x] if x in new else P[x]) - C for x in three]
+        if np.sign(np.dot(v[0], np.cross(v[1], v[2]))) == sign:
+            break
+    shifts = {x: new[x] - P[x] for x in outside}
+    for root, shift in shifts.items():
+        for atom in group(root):
+            if atom in residue:
+                residue[atom]['coord'] = np.array(residue[atom]['coord'], dtype=float) + shift
+    return True
 
 _planar_h_cache = {}
 
@@ -551,11 +622,12 @@ def place_planar_hydrogens(residue, resname, frag_template, scale=1.0):
     return residue
 
 def correct_minimised_residue(residue_type, pdb_in, pdb_out):
-#### applies correct_planar_links, correct_stereocentres and place_planar_hydrogens to every molecule
-#### of a per-residue structure
+#### applies correct_stereocentres, correct_planar_links and place_planar_hydrogens to every molecule
+#### of a per-residue structure. Stereocentres come first: mending a ring centre moves a substituent
+#### (e.g. an ester oxygen), and the link through it is then turned back to its fragment dihedral
     def mend(residue, frag_template):
-        residue = correct_planar_links(residue, residue_type, frag_template)
         residue = correct_stereocentres(residue, residue_type, frag_template)
+        residue = correct_planar_links(residue, residue_type, frag_template)
         return place_planar_hydrogens(residue, residue_type, frag_template, 1.0 / g_var.sf)
     apply_per_molecule(residue_type, pdb_in, pdb_out, mend)
 
@@ -878,6 +950,137 @@ def correct_group_spin(residue, group_fit, template):
             for atom in bead:
                 residue[atom]['coord'] = (residue[atom]['coord'] - pivot).dot(rot) + pivot
     return residue
+
+## Chirality across group junctions.
+## Each rigid group keeps the fragment's handedness, but a stereocentre whose substituents sit in
+## different groups takes its handedness from where the groups land. CG beads carry no chirality, so
+## in a CG simulation the beads around such a junction can drift into the mirror-image arrangement
+## (Martini KLA: about half the molecules at the Kdo II anomeric carbon), and every group then fits
+## its own beads well while the centre between them comes out inverted - beyond what restraints and
+## minimisation can undo. Such a junction is mended by re-placing the group on the side away from the
+## middle of the molecule from the fragment's own geometry relative to its neighbour: its bead fit is
+## given up, the chirality is kept.
+
+_junction_cache = {}
+
+def group_junctions(resname, frag_template, groups):
+#### groups: {group: [atom numbers]} as placed. Returns (order, checks): the groups in breadth-first
+#### order from the middle of the molecule (the group whose removal leaves the smallest largest part),
+#### each with its parent and descendants, and for each child group the stereocentres at its bonds to
+#### the parent: (centre, three neighbours on the two groups' side, the fragment's handedness)
+    if resname in _junction_cache:
+        return _junction_cache[resname]
+    coords, bonded = fragment_template(resname, frag_template)
+    parents_h = hydrogen_parents(resname, frag_template)
+    frag_xyz = {number: np.array(atom['coord'], dtype=float) for group in frag_template.values()
+                for bead in group.values() for number, atom in bead.items()}
+    of_group = {atom: g for g, atoms in groups.items() for atom in atoms}
+    links = {g: set() for g in groups}
+    bonds = {}
+    for a in coords:
+        for b in bonded[a]:
+            if a in of_group and b in of_group and of_group[a] != of_group[b]:
+                links[of_group[a]].add(of_group[b])
+                bonds.setdefault(frozenset((of_group[a], of_group[b])), set()).add((a, b))
+    size = {g: len(atoms) for g, atoms in groups.items()}
+    def largest_part_without(g):
+        seen, worst = {g}, 0
+        for start in links[g]:
+            if start in seen:
+                continue
+            part, stack = 0, [start]
+            seen.add(start)
+            while stack:
+                x = stack.pop()
+                part += size[x]
+                for y in links[x]:
+                    if y not in seen:
+                        seen.add(y)
+                        stack.append(y)
+            worst = max(worst, part)
+        return worst
+    root = min(groups, key=lambda g: (largest_part_without(g), -size[g], str(g)))
+    parent, order, queue = {root: None}, [], [root]
+    while queue:
+        g = queue.pop(0)
+        order.append(g)
+        for h in sorted(links[g], key=str):
+            if h not in parent:
+                parent[h] = g
+                queue.append(h)
+    descendants = {g: [] for g in parent}
+    for g in reversed(order):
+        if parent[g] is not None:
+            descendants[parent[g]] += [g] + descendants[g]
+    hydrogens_of = {}
+    for h, p in parents_h.items():
+        hydrogens_of.setdefault(p, []).append(h)
+    checks = {}
+    for g in order:
+        p = parent[g]
+        if p is None:
+            continue
+        side = set(groups[g]) | set(groups[p])
+        found = []
+        for a, b in bonds.get(frozenset((g, p)), ()):
+            for c in (a, b):
+                hs = hydrogens_of.get(c, [])
+                if not frag_atom_name(frag_template, c).startswith('C') or len(bonded[c]) + len(hs) != 4 or len(hs) > 1:
+                    continue
+                near = sorted(n for n in bonded[c] if n in side) + [h for h in hs if h in side]
+                if len(near) < 3:
+                    continue
+                near = near[:3]
+                v = [frag_xyz[x] - frag_xyz[c] for x in near]
+                volume = np.dot(v[0], np.cross(v[1], v[2])) / np.prod([np.linalg.norm(x) for x in v])
+                if abs(volume) > 0.1 and (c, tuple(near)) not in [(f[0], f[1]) for f in found]:
+                    found.append((c, tuple(near), np.sign(volume)))
+        checks[g] = found
+    _junction_cache[resname] = ({g: (parent[g], descendants[g]) for g in order}, order, checks, frag_xyz)
+    return _junction_cache[resname]
+
+def correct_group_chirality(residue, resname, frag_template, groups):
+#### residue: {atom number: atom} with every group placed. Walks out from the middle of the molecule;
+#### where a stereocentre at a group's bond to its parent has the wrong handedness, the group is put
+#### where the fragment has it relative to its parent (superposing the fragment on the parent's placed
+#### atoms) and everything beyond it follows rigidly
+    family, order, checks, frag_xyz = group_junctions(resname, frag_template, groups)
+    mended = 0
+    for g in order:
+        p, beyond = family[g]
+        if p is None or not checks.get(g):
+            continue
+        wrong = False
+        for c, near, sign in checks[g]:
+            if any(x not in residue for x in (c,) + near):
+                continue
+            v = [np.array(residue[x]['coord'], dtype=float) - np.array(residue[c]['coord'], dtype=float) for x in near]
+            if np.sign(np.dot(v[0], np.cross(v[1], v[2]))) != sign:
+                wrong = True
+                break
+        if not wrong:
+            continue
+        anchor = [x for x in groups[p] if x in residue and x in frag_xyz]
+        moving = [x for x in groups[g] if x in residue and x in frag_xyz]
+        if len(anchor) < 3 or not moving:
+            continue
+        A = np.array([frag_xyz[x] for x in anchor])
+        B = np.array([residue[x]['coord'] for x in anchor], dtype=float)
+        ac, bc = A.mean(axis=0), B.mean(axis=0)
+        rot = kabsch_rotate(A - ac, B - bc)
+        old = np.array([residue[x]['coord'] for x in moving], dtype=float)
+        new = np.array([(frag_xyz[x] - ac).dot(rot) + bc for x in moving])
+#### the groups beyond follow the same rigid move that took this group from its fit to its new place
+        oc, nc = old.mean(axis=0), new.mean(axis=0)
+        follow = kabsch_rotate(old - oc, new - nc)
+        for x, xyz in zip(moving, new):
+            residue[x]['coord'] = xyz
+        for h in beyond:
+            for x in groups[h]:
+                if x in residue:
+                    residue[x]['coord'] = (np.array(residue[x]['coord'], dtype=float) - oc).dot(follow) + nc
+        mended += 1
+    return residue, mended
 
 ### end fragment information
 ### linked residue connectivity start

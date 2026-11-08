@@ -28,8 +28,29 @@ def build_atomistic_system(residue_type):
 
 def write_solvent(atomistic_fragments, residue_type):
     merge_coord = [line['coord'] for line in atomistic_fragments]
+    if residue_type in g_var.np_residues:
+        merge_coord = fix_periodic_overlaps(merge_coord)
     coord, index_conversion = at_mod.index_conversion_generate(atomistic_fragments, merge_coord)
     at_mod.write_pdb(atomistic_fragments, coord, index_conversion, g_var.working_dir+residue_type+'/'+residue_type+'_all.pdb')
+
+def fix_periodic_overlaps(coordinates):
+#### jitters atoms closer than g_var.args.ov to another atom, looking across the periodic boundary (a
+#### molecule that crosses it has atoms outside the box, which a plain distance check would miss; the
+#### groups re-placed by correct_group_chirality are not fitted to beads and can land on a neighbour).
+#### Orthorhombic boxes only; others are returned unchanged
+    box = at_mod.pdb_box([g_var.box_vec]) if isinstance(getattr(g_var, 'box_vec', None), str) else None
+    if box is None or len(coordinates) < 2 or np.abs(box - np.diag(np.diag(box))).max() > 1e-6:
+        return coordinates
+    from scipy.spatial import cKDTree
+    lengths = np.diag(box)
+    xyz = np.array(coordinates, dtype=float)
+    for attempt in range(50):
+        pairs = cKDTree(np.mod(xyz, lengths), boxsize=lengths).query_pairs(g_var.args.ov + 0.05)
+        if not pairs:
+            break
+        for i in {min(pair) for pair in pairs}:
+            xyz[i] += np.random.uniform(-0.2, 0.2, 3)
+    return [x for x in xyz]
 
 def read_solvent_conversion(cg_residue_type,cg_residues):
     residue_type={}
@@ -84,10 +105,23 @@ def fit_np_residue(cg_residue_type, cg_residue, cg_beads, frag_template, frag_ma
         fitted = at_mod.apply_rotations(fitted, cg_resid, group_fit, center, xyz_rot_apply)
         fitted[cg_resid] = at_mod.correct_group_spin(fitted[cg_resid], group_fit, template)
     if cg_residue_type in g_var.np_residues:
+#### the mending below works on the molecule made whole (a molecule split across the periodic boundary
+#### would have its groups compared across it); each atom then goes back to its own periodic image, as
+#### the overlap check that follows does not look across the boundary
+        box = at_mod.pdb_box([g_var.box_vec]) if isinstance(getattr(g_var, 'box_vec', None), str) else None
+        shifts = at_mod.make_whole(fitted[cg_resid], cg_residue_type, frag_template, box)
+#### stereocentres between groups take the fragment's handedness (CG beads can be in the mirror-image
+#### arrangement around them)
+        if len(residue) > 1:
+            groups = {group: [atom for bead in residue[group].values() for atom in bead] for group in residue}
+            fitted[cg_resid], _ = at_mod.correct_group_chirality(fitted[cg_resid], cg_residue_type, frag_template, groups)
         fitted[cg_resid] = at_mod.check_hydrogens(fitted[cg_resid])
         fitted[cg_resid] = at_mod.correct_planar_links(fitted[cg_resid], cg_residue_type, frag_template)
         fitted[cg_resid] = at_mod.correct_stereocentres(fitted[cg_resid], cg_residue_type, frag_template)
         fitted[cg_resid] = at_mod.place_planar_hydrogens(fitted[cg_resid], cg_residue_type, frag_template)
+        for atom, shift in shifts.items():
+            if atom in fitted[cg_resid]:
+                fitted[cg_resid][atom]['coord'] = np.array(fitted[cg_resid][atom]['coord'], dtype=float) - shift
     if len(g_var.res_top[cg_residue_type]['CHIRAL']) > 1:
         chiral = at_mod.get_chiral_non_carbonyl(fitted[cg_resid])
         fitted[cg_resid] = at_mod.correct_chiral_atoms(fitted[cg_resid], chiral)
