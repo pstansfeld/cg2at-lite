@@ -830,24 +830,39 @@ def write_steered_mdp(loc, posres, time, timestep):
             if g_var.pg_residues:
                 steered_md.write('periodic-molecules = yes\n')
 
-def steer_to_aligned(protein_type, fc, input_file ):
+def steer_to_aligned(protein_type, fc, input_file, first=False):
     gen.mkdir_directory(g_var.merged_directory+'STEER')
     print('Applying '+fc.replace('_',' ')+' position restraints', end='\r')
-    os.chdir(g_var.merged_directory)
-    write_steered_mdp(g_var.merged_directory+fc+'_posres-nvt.mdp', '-D'+fc.upper()+'POSRES -DNP', 2000, 0.001)  
-    gromacs([g_var.args.gmx+' grompp '+
-            ' -po md_out-merged_cg2at_steer_'+fc+
-            ' -f '+fc+'_posres-nvt.mdp '+
-            ' -p topol_final.top '+
-            ' -r merged_cg2at_'+protein_type+'.pdb '+
-            ' -c '+input_file+'.pdb '+
-            ' -o STEER/merged_cg2at_'+protein_type+'_steer_'+fc+' '+
-            ' -maxwarn '+str(2), 'STEER/merged_cg2at_'+protein_type+'_steer_'+fc+'.tpr'])  
-    os.chdir('STEER')
-    # removed flag -nt '+str(g_var.args.ncpus)+'
-    complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm merged_cg2at_'+protein_type+'_steer_'+fc+
-                                 ' -c merged_cg2at_'+protein_type+'_steer_'+fc+'.pdb -cpo merged_cg2at_'+protein_type+'_steer_'+fc+'.cpt'
-                                 ,'merged_cg2at_'+protein_type+'_steer_'+fc+'.pdb'])
+#### 2 ps of MD per restraint level. The first level starts from the freshly built system, where a strained molecule
+#### (e.g. a lipid's glycerol) can blow up at 2 fs, so it runs at 1 fs. The later levels start from a relaxed system
+#### and run at 2 fs (bonds to hydrogens are constrained); one that fails is rerun once at 1 fs, as the de novo NVT
+#### halves its timestep, before run_steer falls back to gentler restraints. The structure from a 1 fs rerun is
+#### copied to the usual name for the next level
+    base     = 'merged_cg2at_'+protein_type+'_steer_'+fc
+    attempts = (('', 2000, 0.001),) if first else (('', 1000, 0.002), ('_1fs', 2000, 0.001))
+    for suffix, steps, timestep in attempts:
+        os.chdir(g_var.merged_directory)
+        write_steered_mdp(g_var.merged_directory+fc+'_posres-nvt'+suffix+'.mdp', '-D'+fc.upper()+'POSRES -DNP', steps, timestep)
+        deffnm = base+suffix
+        gromacs([g_var.args.gmx+' grompp '+
+                ' -po md_out-merged_cg2at_steer_'+fc+suffix+
+                ' -f '+fc+'_posres-nvt'+suffix+'.mdp '+
+                ' -p topol_final.top '+
+                ' -r merged_cg2at_'+protein_type+'.pdb '+
+                ' -c '+input_file+'.pdb '+
+                ' -o STEER/'+deffnm+' '+
+                ' -maxwarn '+str(2), 'STEER/'+deffnm+'.tpr'])
+        os.chdir('STEER')
+        # removed flag -nt '+str(g_var.args.ncpus)+'
+        complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
+                                     ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
+                                     , deffnm+'.pdb'])
+        if not equil and os.path.exists(deffnm+'.pdb'):
+            break
+        if not suffix and len(attempts) > 1:
+            print('\nSteering with '+fc.replace('_',' ')+' restraints at a 2 fs timestep failed; retrying at 1 fs')
+    if suffix and not equil and os.path.exists(deffnm+'.pdb'):
+        gen.file_copy_and_check(deffnm+'.pdb', base+'.pdb')
     print('{:<100}'.format(''), end='\r')
     return equil
 
@@ -923,7 +938,7 @@ def run_steer(steer, initial):
     for res_val, restraint in enumerate(steer):
         if not os.path.exists(g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+restraint+'pdb'):
             if res_val == 0:
-                equil = steer_to_aligned('aligned', restraint, initial)
+                equil = steer_to_aligned('aligned', restraint, initial, first=True)
             else:
                 equil = steer_to_aligned('aligned', restraint, g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[res_val-1])
             if equil:
