@@ -163,17 +163,13 @@ def _run() -> None:
             g_var.system.update(number)
 
         print('\nThis may take some time...\n')
-        for residue_type in non_protein_types:
-            if not os.path.exists(
-                    g_var.working_dir + residue_type + '/' + residue_type + '_merged.pdb'):
-                print('Minimising: ' + residue_type)
-                error = gro.minimise_merged(
-                    residue_type,
-                    g_var.working_dir + residue_type + '/' + residue_type + '_all.pdb',
-                )
-                if error and residue_type not in ['SOL']:
-                    print('Failed to minimise as a group: ' + residue_type)
-                    print('please check your input file as there is likely something wrong')
+        jobs = [(residue_type, g_var.working_dir + residue_type + '/' + residue_type + '_all.pdb')
+                for residue_type in non_protein_types
+                if not os.path.exists(g_var.working_dir + residue_type + '/' + residue_type + '_merged.pdb')]
+        for residue_type, error in gro.run_parallel_minimise(jobs).items():
+            if error and residue_type not in ['SOL']:
+                print('Failed to minimise as a group: ' + residue_type)
+                print('please check your input file as there is likely something wrong')
 
     # --- Merge system ---
     g_var.tc['n_p_t'] = time.time()

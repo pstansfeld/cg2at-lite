@@ -68,6 +68,11 @@ def gromacs(gro):
     if os.path.exists(output):
         pass
     else:
+    #### residue types minimised side by side (run_parallel_minimise) share the cores: each mdrun gets its
+    #### share of OpenMP threads and is not pinned, so the jobs do not all land on the same cores
+        ntomp = getattr(g_var, 'mdrun_ntomp', None)
+        if ntomp and ' mdrun ' in cmd:
+            cmd = cmd.replace(' -pin on', ' -pin off')+' -ntomp '+str(ntomp)
     #### if the flag gromacs is used every gromacs command will be printed to the terminal 
         if g_var.args.v >= 3:
             print('\nrunning gromacs: \n '+cmd+'\n')
@@ -624,6 +629,37 @@ def report_cg_fidelity(residue_type, pdb):
               ' A from their CG beads (see '+g_var.working_dir+residue_type+'/'+residue_type+'_cg_fidelity.dat)')
     return rmsd
 
+def _minimise_job(job):
+    residue_type, input_file = job
+    return residue_type, minimise_merged(residue_type, input_file)
+
+def run_parallel_minimise(jobs):
+#### minimises each non-protein residue type (its own folder and GROMACS runs) as a separate process,
+#### largest first, with the cores split between them; returns {residue type: error flag}.
+#### Forked, so each process starts from this one's state (g_var); one job, or a platform without
+#### fork, runs in this process as before
+    import multiprocessing as mp
+    size = lambda job: os.path.getsize(job[1]) if os.path.exists(job[1]) else 0
+    jobs = sorted(jobs, key=size, reverse=True)
+    cores = os.cpu_count() or 1
+#### at most 3 at a time: a residue type's minimisation barely speeds up with more threads, so the
+#### slowest type sets the floor, and beyond 3 side by side each job slows down (EptA in POPE/POPG/CARD
+#### on 10 cores: 24 s one at a time, 13 s two, 10 s three, 13 s five, 17 s seven)
+    workers = min(len(jobs), 3, max(1, cores // 2))
+    if workers < 2 or 'fork' not in mp.get_all_start_methods():
+        return dict(_minimise_job(job) for job in jobs)
+    g_var.mdrun_ntomp = max(1, cores // workers)
+    print('Minimising '+', '.join(job[0] for job in jobs)+' side by side ('+str(workers)+' at a time, '
+          +str(g_var.mdrun_ntomp)+' threads each)\n')
+    sys.stdout.flush()
+    try:
+        with mp.get_context('fork').Pool(workers, maxtasksperchild=1) as pool:
+            results = dict(pool.imap_unordered(_minimise_job, jobs))
+    finally:
+        g_var.mdrun_ntomp = None
+        os.chdir(g_var.working_dir)
+    return results
+
 def strong_minimise(residue_type, input_file, name):
 #### the final minimisation of a residue type (full stereocentre restraints) into <residue>_merged.pdb;
 #### returns gromacs' success flag and whether steepest descents reached emtol
@@ -830,24 +866,39 @@ def write_steered_mdp(loc, posres, time, timestep):
             if g_var.pg_residues:
                 steered_md.write('periodic-molecules = yes\n')
 
-def steer_to_aligned(protein_type, fc, input_file ):
+def steer_to_aligned(protein_type, fc, input_file, first=False):
     gen.mkdir_directory(g_var.merged_directory+'STEER')
     print('Applying '+fc.replace('_',' ')+' position restraints', end='\r')
-    os.chdir(g_var.merged_directory)
-    write_steered_mdp(g_var.merged_directory+fc+'_posres-nvt.mdp', '-D'+fc.upper()+'POSRES -DNP', 2000, 0.001)  
-    gromacs([g_var.args.gmx+' grompp '+
-            ' -po md_out-merged_cg2at_steer_'+fc+
-            ' -f '+fc+'_posres-nvt.mdp '+
-            ' -p topol_final.top '+
-            ' -r merged_cg2at_'+protein_type+'.pdb '+
-            ' -c '+input_file+'.pdb '+
-            ' -o STEER/merged_cg2at_'+protein_type+'_steer_'+fc+' '+
-            ' -maxwarn '+str(2), 'STEER/merged_cg2at_'+protein_type+'_steer_'+fc+'.tpr'])  
-    os.chdir('STEER')
-    # removed flag -nt '+str(g_var.args.ncpus)+'
-    complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm merged_cg2at_'+protein_type+'_steer_'+fc+
-                                 ' -c merged_cg2at_'+protein_type+'_steer_'+fc+'.pdb -cpo merged_cg2at_'+protein_type+'_steer_'+fc+'.cpt'
-                                 ,'merged_cg2at_'+protein_type+'_steer_'+fc+'.pdb'])
+#### 2 ps of MD per restraint level. The first level starts from the freshly built system, where a strained molecule
+#### (e.g. a lipid's glycerol) can blow up at 2 fs, so it runs at 1 fs. The later levels start from a relaxed system
+#### and run at 2 fs (bonds to hydrogens are constrained); one that fails is rerun once at 1 fs, as the de novo NVT
+#### halves its timestep, before run_steer falls back to gentler restraints. The structure from a 1 fs rerun is
+#### copied to the usual name for the next level
+    base     = 'merged_cg2at_'+protein_type+'_steer_'+fc
+    attempts = (('', 2000, 0.001),) if first else (('', 1000, 0.002), ('_1fs', 2000, 0.001))
+    for suffix, steps, timestep in attempts:
+        os.chdir(g_var.merged_directory)
+        write_steered_mdp(g_var.merged_directory+fc+'_posres-nvt'+suffix+'.mdp', '-D'+fc.upper()+'POSRES -DNP', steps, timestep)
+        deffnm = base+suffix
+        gromacs([g_var.args.gmx+' grompp '+
+                ' -po md_out-merged_cg2at_steer_'+fc+suffix+
+                ' -f '+fc+'_posres-nvt'+suffix+'.mdp '+
+                ' -p topol_final.top '+
+                ' -r merged_cg2at_'+protein_type+'.pdb '+
+                ' -c '+input_file+'.pdb '+
+                ' -o STEER/'+deffnm+' '+
+                ' -maxwarn '+str(2), 'STEER/'+deffnm+'.tpr'])
+        os.chdir('STEER')
+        # removed flag -nt '+str(g_var.args.ncpus)+'
+        complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
+                                     ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
+                                     , deffnm+'.pdb'])
+        if not equil and os.path.exists(deffnm+'.pdb'):
+            break
+        if not suffix and len(attempts) > 1:
+            print('\nSteering with '+fc.replace('_',' ')+' restraints at a 2 fs timestep failed; retrying at 1 fs')
+    if suffix and not equil and os.path.exists(deffnm+'.pdb'):
+        gen.file_copy_and_check(deffnm+'.pdb', base+'.pdb')
     print('{:<100}'.format(''), end='\r')
     return equil
 
@@ -923,7 +974,7 @@ def run_steer(steer, initial):
     for res_val, restraint in enumerate(steer):
         if not os.path.exists(g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+restraint+'pdb'):
             if res_val == 0:
-                equil = steer_to_aligned('aligned', restraint, initial)
+                equil = steer_to_aligned('aligned', restraint, initial, first=True)
             else:
                 equil = steer_to_aligned('aligned', restraint, g_var.merged_directory+'STEER/merged_cg2at_aligned_steer_'+steer[res_val-1])
             if equil:
