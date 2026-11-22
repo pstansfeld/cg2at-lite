@@ -70,13 +70,17 @@ def gromacs(gro):
     else:
     #### residue types minimised side by side (run_parallel_minimise) share the cores: each mdrun gets its
     #### share of OpenMP threads and is not pinned, so the jobs do not all land on the same cores
+    #### OMP_NUM_THREADS is set to match: mdrun stops with a fatal error when the two differ, and HPC
+    #### schedulers (e.g. SLURM) often set OMP_NUM_THREADS
         ntomp = getattr(g_var, 'mdrun_ntomp', None)
+        env = None
         if ntomp and ' mdrun ' in cmd:
             cmd = cmd.replace(' -pin on', ' -pin off')+' -ntomp '+str(ntomp)
+            env = dict(os.environ, OMP_NUM_THREADS=str(ntomp))
     #### if the flag gromacs is used every gromacs command will be printed to the terminal 
         if g_var.args.v >= 3:
             print('\nrunning gromacs: \n '+cmd+'\n')
-        output = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         err, out = output.communicate()
         out=out.decode("utf-8")
         if not hasattr(g_var, 'gmx_version'):
@@ -641,7 +645,8 @@ def run_parallel_minimise(jobs):
     import multiprocessing as mp
     size = lambda job: os.path.getsize(job[1]) if os.path.exists(job[1]) else 0
     jobs = sorted(jobs, key=size, reverse=True)
-    cores = os.cpu_count() or 1
+#### the CPUs this process may run on (a SLURM or taskset allocation), not every core in the node
+    cores = len(os.sched_getaffinity(0)) if hasattr(os, 'sched_getaffinity') else (os.cpu_count() or 1)
 #### at most 3 at a time: a residue type's minimisation barely speeds up with more threads, so the
 #### slowest type sets the floor, and beyond 3 side by side each job slows down (EptA in POPE/POPG/CARD
 #### on 10 cores: 24 s one at a time, 13 s two, 10 s three, 13 s five, 17 s seven)
