@@ -186,6 +186,10 @@ def _run() -> None:
 
     if not os.path.exists(g_var.merged_directory + 'merged_cg2at_de_novo.pdb'):
         at_mod.merge_system_pdbs('_de_novo')
+        moved = at_mod.relocate_buried_solvent(g_var.merged_directory + 'merged_cg2at_de_novo.pdb')
+        if moved:
+            print('Moved '+str(moved)+' water or ion molecules that were built inside other molecules '
+                  '(e.g. through a sugar ring) to free solvent\n')
 
     if not os.path.exists(g_var.merged_directory + 'MIN/merged_cg2at_de_novo_minimised.pdb'):
         gro.make_min('merged_cg2at')
