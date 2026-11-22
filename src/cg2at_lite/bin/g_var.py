@@ -5,9 +5,13 @@ from time import gmtime, strftime
 import argparse
 from pathlib import Path
 
-# Single source of truth for the version string — referenced by argparse
-# below and by cg2at_header() in gen.py.
-VERSION: str = '0.6.1.lite'
+# Version string for argparse below and cg2at_header() in gen.py, read from the installed package
+# (pyproject.toml) so it cannot fall behind a release
+try:
+    from importlib.metadata import version as _package_version
+    VERSION: str = _package_version('CG2AT-lite') + '.lite'
+except Exception:
+    VERSION = 'unknown.lite'
 
 if __name__ == "cg2at_lite.bin.g_var" and 'start_dir' not in locals():
     parser = argparse.ArgumentParser(
