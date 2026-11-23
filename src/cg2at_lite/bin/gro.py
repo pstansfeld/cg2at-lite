@@ -88,10 +88,13 @@ def gromacs(gro):
     #### all gromacs outputs will be saved into gromacs_outputs within the folder it is run
         with open('gromacs_outputs', 'a') as checks:
             checks.write(out)
-    #### standard catch for failed gromacs commands
+    #### standard catch for failed gromacs commands; a command the caller retries if it fails (g_var.gromacs_may_fail,
+    #### e.g. MD at 2 fs before a 1 fs rerun) is recorded in gromacs_outputs and returned as failed, but not announced
+            loud = not getattr(g_var, 'gromacs_may_fail', False)
             for err in possible_errors:
                 if err in out:
-                    print('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
+                    if loud:
+                        print('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
                     if 'residue naming needs to be fixed' in out and 'PROTEIN_aligned' in out:
                         print('\n\n###  The supplied protein structure contains incorrectly named or missing atoms  ###\n\n')
                     error = True
@@ -103,8 +106,9 @@ def gromacs(gro):
                 code = output.returncode
                 signal = code - 128 if code > 128 else (-code if code < 0 else None)
                 note = (' (killed by signal '+str(signal)+(', e.g. out of memory' if signal == 9 else '')+')') if signal else ''
-                print('\n\nThere was an error with the following command:\n'+cmd+'\nIt exited with code '+str(code)+note+
-                      '; its output is in: '+os.getcwd()+'/gromacs_outputs\n')
+                if loud:
+                    print('\n\nThere was an error with the following command:\n'+cmd+'\nIt exited with code '+str(code)+note+
+                          '; its output is in: '+os.getcwd()+'/gromacs_outputs\n')
                 checks.write('\n# exited with code '+str(code)+note+'\n')
                 error = True
             if 'number of atoms in the topology (' in out:
@@ -1153,9 +1157,13 @@ def steer_to_aligned(protein_type, fc, input_file, first=False):
                 ' -maxwarn '+str(2), 'STEER/'+deffnm+'.tpr'])
         os.chdir('STEER')
         # removed flag -nt '+str(g_var.args.ncpus)+'
-        complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
-                                     ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
-                                     , deffnm+'.pdb'])
+        g_var.gromacs_may_fail = not suffix and len(attempts) > 1
+        try:
+            complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
+                                         ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
+                                         , deffnm+'.pdb'])
+        finally:
+            g_var.gromacs_may_fail = False
         if not equil and os.path.exists(deffnm+'.pdb'):
             break
         if not suffix and len(attempts) > 1:
@@ -1194,9 +1202,13 @@ def run_nvt(input_file):
                 ' -maxwarn '+str(2), 'NVT/'+deffnm+'.tpr'])   
         os.chdir(g_var.merged_directory+'NVT')
         # removed flag -nt '+str(g_var.args.ncpus)+'
-        gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
-                ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
-                , deffnm+'.pdb'])  
+        g_var.gromacs_may_fail = name == 'nvt'
+        try:
+            gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
+                    ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
+                    , deffnm+'.pdb'])
+        finally:
+            g_var.gromacs_may_fail = False
         if os.path.exists(deffnm+'.pdb'):
             break
         print('\nNVT with a '+str(timestep*1000)+' fs timestep failed; retrying at half the timestep')
