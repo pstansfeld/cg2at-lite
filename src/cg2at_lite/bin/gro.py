@@ -964,7 +964,13 @@ def em_pass(residue_type, mdp, define, input_file, name):
                 '-c '+input_file+' '+
                 '-o MIN/'+residue_type+'_merged_'+name+' -maxwarn 1', 'MIN/'+residue_type+'_merged_'+name+'.tpr'])
         os.chdir('MIN')
-        gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+residue_type+'_merged_'+name+' -c ../'+output, '../'+output])
+#### the callers check whether steepest descents converged and fall back if not (an unrestrained pass, the
+#### strong pass, the structure from before), so a pass that stops short is not announced as an error
+        g_var.gromacs_may_fail = True
+        try:
+            gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+residue_type+'_merged_'+name+' -c ../'+output, '../'+output])
+        finally:
+            g_var.gromacs_may_fail = False
         os.chdir('..')
     converged = False
     log = 'MIN/'+residue_type+'_merged_'+name+'.log'
