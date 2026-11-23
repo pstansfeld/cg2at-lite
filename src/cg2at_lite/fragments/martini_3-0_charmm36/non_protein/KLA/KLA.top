@@ -1,3 +1,6 @@
+# Bead sections follow the Martini 3 Re-LPS mapping of Brandner, Prakaash, Blanco Gonzalez, Waterhouse & Khalid,
+# J. Chem. Theory Comput. 2024 (ct4c00374): Table S1 for the sugars, phosphates and linkers; acyl chains F, E
+# and A split as the published 49-bead topology (C3F, C3E, C4A). Same mapping as CCD2AT (Ref_data/KLA_CG.txt).
 [ GROUPS ]
 ZM1 ZM2 ZM3 VS1
 GM1 GM2 GM3 VS2
