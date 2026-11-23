@@ -93,7 +93,9 @@ def gromacs(gro):
             loud = not getattr(g_var, 'gromacs_may_fail', False)
             for err in possible_errors:
                 if err in out:
-                    if loud:
+    #### steepest descents stopping short of emtol is returned as a failure but not announced: every caller checks
+    #### convergence or its output and carries on (a repair pass, the structure from before, MD from the result)
+                    if loud and err not in ('did not converge to Fmax ', 'but did not reach the requested Fmax '):
                         print('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
                     if 'residue naming needs to be fixed' in out and 'PROTEIN_aligned' in out:
                         print('\n\n###  The supplied protein structure contains incorrectly named or missing atoms  ###\n\n')
@@ -660,7 +662,9 @@ def minimise_merged(residue_type, input_file):
     return success
 
 #### (force constant kJ/mol/nm2, MD steps at 1 fs; 0 steps = steepest descents) for steering a trapped molecule
-STEER_STAGES = [(1000, 0), (1000, 3000), (5000, 2000), (20000, 0)]
+STEER_STAGES = [(1000, 0), (1000, 6000), (5000, 4000), (20000, 0)]   # MD at 0.5 fs (1 fs blew up in the
+                                                                     # step from 1000 to 5000 kJ/mol/nm2)
+STEER_TIMEOUT = 300   # s for any one steering grompp/mdrun: a run that has gone to NaN can hang in its pair search
 STEER_ROUNDS = 3
 
 #### then, with its neighbours frozen around it: (force constant, MD steps at 0.5 fs; 0 steps = steepest descents)
@@ -705,9 +709,13 @@ def run_steer_stages(prefix, stages, start, topology, frozen=False, dt=0.001):
         command = [g_var.args.gmx, 'grompp', '-f', stage+'.mdp', '-c', previous, '-r', prefix+'target.gro', '-p', topology,
                    '-o', stage, '-po', stage+'_out.mdp', '-maxwarn', '3'] + (['-n', 'steer.ndx'] if frozen else [])
         with open('gromacs_outputs', 'a') as log:
-            subprocess.run(command, stdout=log, stderr=log, env=env)
-            subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
-                           stdout=log, stderr=log, env=env)
+            try:
+                subprocess.run(command, stdout=log, stderr=log, env=env, timeout=STEER_TIMEOUT)
+                subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
+                               stdout=log, stderr=log, env=env, timeout=STEER_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                log.write('\n# stopped after '+str(STEER_TIMEOUT)+' s (a run gone to NaN can hang)\n')
+                return None
         if not os.path.exists(stage+'.gro'):
             return None
         previous = stage+'.gro'
@@ -774,7 +782,7 @@ def _steer_once(residue_type, residue, frag_template, sites, folder, environment
 #### 1. on its own
         write_steer_gro('start.gro', start + offset, names, residue_type, box)
         write_steer_gro('steer_target.gro', target + offset, names, residue_type, box)
-        result = run_steer_stages('steer_', STEER_STAGES, 'start.gro', 'topol.top')
+        result = run_steer_stages('steer_', STEER_STAGES, 'start.gro', 'topol.top', dt=0.0005)
         if result is None:
             return None
         xyz = read_steer_gro(result, n_atoms)
