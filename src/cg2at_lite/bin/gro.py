@@ -599,8 +599,31 @@ def minimise_merged(residue_type, input_file):
                 if os.path.exists(residue_type+'_merged.pdb'):
                     os.replace(residue_type+'_merged.pdb', residue_type+'_merged_restore_failed.pdb')
                 os.replace(residue_type+'_merged_before_restore.pdb', residue_type+'_merged.pdb')
-                print('\nWarning: '+residue_type+': '+str(before)+' molecules are still trapped (a ring held open or a centre squashed; '
-                      'see '+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
+#### a molecule still trapped is replaced by the library molecule steered onto it (steer_molecule): every
+#### stereocentre comes from the fragment, the conformation from the trapped molecule. Kept if it leaves
+#### fewer molecules trapped after the strong minimisation with the neighbours
+    if restrained and os.path.exists(residue_type+'_merged.pdb') and not os.path.exists(residue_type+'_merged_steered.pdb'):
+        before = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb')
+        if before:
+            steered = steer_trapped_molecules(residue_type, residue_type+'_merged.pdb', residue_type+'_merged_steered.pdb')
+            after = before
+            if steered:
+                at_mod.unthread_rings(residue_type, residue_type+'_merged_steered.pdb', residue_type+'_merged_steered.pdb')
+                os.rename(residue_type+'_merged.pdb', residue_type+'_merged_before_steer.pdb')
+                steer_success, steer_converged = strong_minimise(residue_type, residue_type+'_merged_steered.pdb', 'steered_min')
+                after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb') if os.path.exists(residue_type+'_merged.pdb') else before
+                if after < before:
+                    success, converged = steer_success, steer_converged
+                    print('\n'+residue_type+': '+str(steered)+' of '+str(before)+' molecules still trapped were replaced by the library '
+                          'molecule steered onto them; '+str(after)+' left')
+                else:
+                    if os.path.exists(residue_type+'_merged.pdb'):
+                        os.replace(residue_type+'_merged.pdb', residue_type+'_merged_steer_failed.pdb')
+                    os.replace(residue_type+'_merged_before_steer.pdb', residue_type+'_merged.pdb')
+                    after = before
+            if after:
+                print('\nWarning: '+residue_type+': '+str(after)+' molecules are still trapped (a ring held open or a centre squashed '
+                      'or inverted; see '+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
 #### how far each molecule has moved from the CG beads it was built from
     if residue_type in g_var.np_residues and os.path.exists(residue_type+'_merged.pdb'):
         report_cg_fidelity(residue_type, residue_type+'_merged.pdb')
@@ -613,6 +636,116 @@ def minimise_merged(residue_type, input_file):
                   +str(molecules)+' molecules ('+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
     os.chdir(g_var.working_dir)
     return success
+
+#### (force constant kJ/mol/nm2, MD steps at 1 fs; 0 steps = steepest descents) for steering a trapped molecule
+STEER_STAGES = [(1000, 0), (1000, 3000), (5000, 2000), (20000, 0)]
+
+def steer_mdp(name, k, steps):
+    with open(name, 'w') as mdp:
+        mdp.write('define = -DCISRES -DSTEERPOSRE -DSTEER_K='+str(k)+'\n')
+        if steps:
+            mdp.write('integrator = md\ndt = 0.001\nnsteps = '+str(steps)+'\ntcoupl = v-rescale\ntc-grps = System\n'
+                      'tau-t = 0.1\nref-t = 300\ngen-vel = yes\ngen-temp = 300\nconstraints = h-bonds\n')
+        else:
+            mdp.write('integrator = steep\nnsteps = 2000\nemtol = 100\nemstep = 0.001\n')
+#### one molecule in a large box: reaction field screened as in water (epsilon-r 80) so its own charged
+#### groups (e.g. the phosphates and carboxylates of LPS) do not pull it out of shape in vacuum
+        mdp.write('cutoff-scheme = Verlet\ncoulombtype = reaction-field\nepsilon-r = 80\nepsilon-rf = 0\n'
+                  'rcoulomb = 1.2\nrvdw = 1.2\npbc = xyz\nrefcoord-scaling = no\n')
+
+def write_steer_gro(name, coords, names, residue_type, box):
+    with open(name, 'w') as gro:
+        gro.write('steer\n'+str(len(names))+'\n')
+        for p, (atom, xyz) in enumerate(zip(names, coords)):
+            gro.write('{:5d}{:<5s}{:>5s}{:5d}{:8.3f}{:8.3f}{:8.3f}\n'.format(1, residue_type[:5], atom[:5], (p + 1) % 100000,
+                                                                     *(xyz / 10.0)))
+        gro.write('{:10.5f}{:10.5f}{:10.5f}\n'.format(box, box, box))
+
+def steer_molecule(residue_type, residue, frag_template, sites, folder):
+#### steers the library molecule onto one trapped molecule: the whole-molecule fragment (every
+#### stereocentre right by construction) is superposed on the trapped molecule's heavy atoms away from
+#### the defect, then minimised and run briefly on its own with position restraints (rising force
+#### constants) to the trapped molecule's coordinates on every heavy atom except the defect site, and with
+#### the CISRES restraints that hold its stereocentres, rings and double bonds. It takes the trapped
+#### molecule's conformation, from its CG beads, without its defect. Returns the new residue, or None
+    position, names = at_mod.molecule_itp_order(residue_type, frag_template)
+    n_atoms = len(names)
+    frag_xyz = {number: np.array(atom['coord'], dtype=float) / g_var.sf
+                for group in frag_template.values() for bead in group.values() for number, atom in bead.items()}
+    by_position = {p: number for number, p in position.items() if p}
+    if sorted(by_position) != list(range(1, n_atoms + 1)) or any(by_position[p] not in residue for p in by_position):
+        return None
+    heavy = [n for n in residue if n in frag_xyz and not gen.is_hydrogen(at_mod.frag_atom_name(frag_template, n))]
+    fit = [n for n in heavy if n not in sites]
+    if len(fit) < 3:
+        return None
+    P = np.array([frag_xyz[n] for n in fit])
+    Q = np.array([residue[n]['coord'] for n in fit], dtype=float)
+    pc, qc = P.mean(axis=0), Q.mean(axis=0)
+    rot = at_mod.kabsch_rotate(P - pc, Q - qc)
+    start = np.array([(frag_xyz[by_position[p]] - pc).dot(rot) + qc for p in range(1, n_atoms + 1)])
+    target = np.array([np.array(residue[by_position[p]]['coord'], dtype=float) for p in range(1, n_atoms + 1)])
+    box = float(np.ptp(target, axis=0).max()) / 10.0 + 4.0
+    offset = np.full(3, box * 5.0) - target.mean(axis=0)
+    os.makedirs(folder, exist_ok=True)
+    here = os.getcwd()
+    with open('topol_'+residue_type+'.top') as top:
+        header = top.read().split('[ system ]')[0]
+    header = header.replace('#include "../FINAL/', '#include "'+os.path.abspath('../FINAL')+'/')
+    header = header.replace('#include "'+cisres_itp_name(residue_type)+'"', '#include "'+os.path.abspath(cisres_itp_name(residue_type))+'"')
+    os.chdir(folder)
+    try:
+        with open('topol.top', 'w') as top:
+            top.write(header+'#ifdef STEERPOSRE\n#include "steer_posre.itp"\n#endif\n\n[ system ]\nsteer\n\n[ molecules ]\n'
+                      +gen.swap_to_solvent(residue_type)+'    1\n')
+        with open('steer_posre.itp', 'w') as posre:
+            posre.write('[ position_restraints ]\n')
+            for p in range(1, n_atoms + 1):
+                if by_position[p] in fit:
+                    posre.write('{:6d}     1  STEER_K  STEER_K  STEER_K\n'.format(p))
+        write_steer_gro('start.gro', start + offset, names, residue_type, box)
+        write_steer_gro('target.gro', target + offset, names, residue_type, box)
+        previous = 'start.gro'
+        env = dict(os.environ, OMP_NUM_THREADS='1')
+        for k, (force, steps) in enumerate(STEER_STAGES):
+            stage = 'steer_'+str(k)
+            steer_mdp(stage+'.mdp', force, steps)
+            with open('gromacs_outputs', 'a') as log:
+                subprocess.run([g_var.args.gmx, 'grompp', '-f', stage+'.mdp', '-c', previous, '-r', 'target.gro', '-p', 'topol.top',
+                                '-o', stage, '-po', stage+'_out.mdp', '-maxwarn', '3'], stdout=log, stderr=log, env=env)
+                subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
+                               stdout=log, stderr=log, env=env)
+            if not os.path.exists(stage+'.gro'):
+                return None
+            previous = stage+'.gro'
+        with open(previous) as gro:
+            rows = gro.readlines()[2:2 + n_atoms]
+        xyz = np.array([[float(r[20:28]), float(r[28:36]), float(r[36:44])] for r in rows]) * 10.0 - offset
+    finally:
+        os.chdir(here)
+    if not np.isfinite(xyz).all():
+        return None
+    steered = {number: {'coord': xyz[p - 1]} for p, number in by_position.items()}
+    for number in residue:
+        if number not in steered:
+            steered[number] = residue[number]
+    return None if at_mod.trapped(steered, residue_type, frag_template) else steered
+
+def steer_trapped_molecules(residue_type, pdb_in, pdb_out):
+#### steer_molecule on every molecule of a per-residue structure that is trapped; returns the number replaced
+    steered, count = [0], [0]
+    def fix(residue, frag_template):
+        sites = at_mod.trap_sites(residue, residue_type, frag_template)
+        if not sites:
+            return residue
+        count[0] += 1
+        new = steer_molecule(residue_type, residue, frag_template, sites, 'STEER_TRAPPED/'+str(count[0]))
+        if new is None:
+            return residue
+        steered[0] += 1
+        return new
+    at_mod.apply_per_molecule(residue_type, pdb_in, pdb_out, fix)
+    return steered[0]
 
 CG_FIDELITY_WARN = 3.0
 

@@ -682,6 +682,63 @@ def trapped(residue, resname, frag_template):
                 return True
     return False
 
+def trap_sites(residue, resname, frag_template):
+#### the heavy atoms where a molecule is trapped (the tests of trapped()): an inverted or flat stereocentre
+#### with its three reference neighbours, a squashed bond, or every atom of a ring held open by a stretched
+#### bond, each with its bonded heavy neighbours. Empty when the molecule is not trapped
+    coords, bonded = fragment_template(resname, frag_template)
+    ring_atoms = _ring_atoms(resname, bonded)
+    rings = six_membered_rings(bonded)
+    core = set()
+    for a in coords:
+        for b in bonded[a]:
+            if b > a and a in residue and b in residue:
+                length = np.linalg.norm(np.array(residue[a]['coord'], dtype=float) - np.array(residue[b]['coord'], dtype=float))
+                reference = np.linalg.norm(coords[a] - coords[b]) / g_var.sf
+                if length < 0.85 * reference:
+                    core.update((a, b))
+                elif a in ring_atoms and b in ring_atoms and length > 1.1 * reference:
+                    for ring in rings:
+                        if a in ring and b in ring:
+                            core.update(ring)
+    for c, three, fourth, carried, sign in stereo_template(resname, frag_template):
+        if any(x not in residue for x in [c] + three):
+            continue
+        v = [np.array(residue[x]['coord'], dtype=float) - np.array(residue[c]['coord'], dtype=float) for x in three]
+        flat = any(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)) < math.cos(math.radians(150))
+                   for a, b in itertools.combinations(v, 2))
+        if flat or np.sign(np.dot(v[0], np.cross(v[1], v[2]))) != sign:
+            core.update([c] + list(three))
+    sites = set(core)
+    for a in core:
+        sites.update(bonded.get(a, ()))
+    return sites
+
+def molecule_itp_order(residue_type, frag_template):
+#### ({fragment atom number: position in the itp (1-based)}, [itp atom names]) for one molecule: by name when
+#### the itp names are unique, otherwise the fragment atom number is the itp index (as apply_per_molecule)
+    location = gen.fragment_location(residue_type)
+    names, order, in_atoms, molecules = {}, [], False, 0
+    with open(location[:-4]+'.itp') as itp_input:
+        for line in itp_input:
+            line_sep = line.split(';')[0].split()
+            if not line_sep:
+                continue
+            if line_sep[0] == '[':
+                in_atoms = line_sep[1] == 'atoms'
+                molecules += line_sep[1] == 'moleculetype'
+                continue
+            if in_atoms and molecules == 1 and line_sep[0].isdigit():
+                names.setdefault(line_sep[4], []).append(int(line_sep[0]))
+                order.append(line_sep[4])
+    unique = all(len(index) == 1 for index in names.values())
+    position = {}
+    for group in frag_template.values():
+        for bead in group.values():
+            for number, atom in bead.items():
+                position[number] = (names[atom['atom']][0] if atom['atom'] in names else None) if unique else number
+    return position, order
+
 def _ring_atoms(resname, bonded):
     if resname not in _ring_atom_cache:
         _ring_atom_cache[resname] = {atom for ring in six_membered_rings(bonded) for atom in ring}
@@ -1451,6 +1508,92 @@ def merge_system_pdbs(protein):
             write_pdb(merge, coords, index_conversion, g_var.merged_directory+'merged_cg2at'+protein+'.pdb')
         else:
             write_pdb(merge, merge_coords, {}, g_var.merged_directory+'merged_cg2at'+protein+'.pdb')
+
+WATER_NAMES = ('SOL', 'HOH', 'WAT', 'TIP3', 'TIP4', 'SPC')
+SOLVENT_O_CLASH = 1.8    # A: a water oxygen (or ion) this close to a solute heavy atom is buried in it
+SOLVENT_H_CLASH = 1.2    # A: likewise for a water hydrogen
+SOLVENT_FREE = 1.6       # A: no atom this close to a relocated water oxygen or ion (closer contacts with
+SOLVENT_FREE_H = 1.2     # A: other waters in the bulk are left to the minimisation, which removes them)
+
+def relocate_buried_solvent(pdb_file):
+#### waters (and ions) are built from their own CG beads, independently of the lipids and protein, so
+#### one can land inside a solute: overlapping its atoms or threaded through a sugar ring, from where
+#### no minimisation can push it out (its forces blow up, and the merged minimisation or the first MD
+#### step fails on NaN coordinates). Each such water or ion is moved, rigidly, to a free spot in the
+#### bulk solvent next to another water; nothing is deleted, so the atom order and the topology are
+#### unchanged. Returns the number of molecules moved
+    with open(pdb_file) as pdb_input:
+        lines = pdb_input.readlines()
+    box = pdb_box(lines)
+    rows = [k for k, line in enumerate(lines) if line.startswith(('ATOM', 'HETATM'))]
+    if not rows or box is None or np.abs(box - np.diag(np.diag(box))).max() > 1e-6:
+        return 0
+    lengths = np.diag(box)
+    xyz = np.array([[float(lines[k][30:38]), float(lines[k][38:46]), float(lines[k][46:54])] for k in rows])
+    resname = [lines[k][17:21].strip() for k in rows]
+    atom = [lines[k][12:16].strip() for k in rows]
+#### solvent molecules: consecutive atoms of one water residue, or a single-atom ion
+    molecules, start = [], 0
+    for i in range(1, len(rows) + 1):
+        if i == len(rows) or lines[rows[i]][17:27] != lines[rows[i - 1]][17:27]:
+            if resname[start] in WATER_NAMES or (i - start == 1 and resname[start] in g_var.ion_residues + ['NA', 'CL', 'K', 'MG', 'CA', 'ZN']):
+                molecules.append(list(range(start, i)))
+            start = i
+    solvent = np.zeros(len(rows), dtype=bool)
+    for molecule in molecules:
+        solvent[molecule] = True
+    solute = np.where(~solvent)[0]
+    if not len(solute) or not molecules:
+        return 0
+    heavy = np.array([not gen.is_hydrogen(atom[i]) for i in range(len(rows))])
+    wrap = lambda p: np.mod(p, lengths)
+    solute_heavy = cKDTree(wrap(xyz[solute[heavy[solute]]]), boxsize=lengths)
+    solute_all = cKDTree(wrap(xyz[solute]), boxsize=lengths)
+    solvent_atoms = np.where(solvent)[0]
+    near_heavy = solute_heavy.query(wrap(xyz[solvent_atoms]), distance_upper_bound=SOLVENT_O_CLASH)[0]
+    near_any = solute_all.query(wrap(xyz[solvent_atoms]), distance_upper_bound=SOLVENT_H_CLASH)[0]
+    clash = set(solvent_atoms[(heavy[solvent_atoms] & np.isfinite(near_heavy)) |
+                              (~heavy[solvent_atoms] & np.isfinite(near_any))])
+    moving = [molecule for molecule in molecules if clash.intersection(molecule)]
+    if not moving:
+        return 0
+    waters_o = [molecule[0] for molecule in molecules if len(molecule) > 1 and molecule not in moving]
+    moving_atoms = set(i for molecule in moving for i in molecule)
+    keep = np.array([i not in moving_atoms for i in range(len(rows))])
+    tree = cKDTree(wrap(xyz[keep]), boxsize=lengths)
+    water_tree = cKDTree(wrap(xyz[waters_o]), boxsize=lengths)
+    placed = []
+    rng = np.random.default_rng(1)
+    moved = 0
+    for molecule in moving:
+        offsets = xyz[molecule] - xyz[molecule[0]]
+        limits = [SOLVENT_FREE if heavy[i] else SOLVENT_FREE_H for i in molecule]
+        for attempt in range(5000):
+            anchor = xyz[waters_o[rng.integers(len(waters_o))]]
+            direction = rng.normal(size=3)
+            centre = anchor + 3.0 * direction / np.linalg.norm(direction)
+            trial = centre + offsets
+#### in the bulk: among other waters, away from the solute
+            if solute_heavy.query_ball_point(wrap(centre), 4.0) or len(water_tree.query_ball_point(wrap(centre), 5.0)) < 4:
+                continue
+            if any(tree.query_ball_point(wrap(p), limits[k]) for k, p in enumerate(trial)):
+                continue
+            if placed:
+                d = (np.array(placed)[None, :, :] - trial[:, None, :] + lengths / 2) % lengths - lengths / 2
+                if (np.linalg.norm(d, axis=2) < SOLVENT_FREE).any():
+                    continue
+            xyz[molecule] = trial
+            placed.extend(trial)
+            moved += 1
+            break
+    for i, k in enumerate(rows):
+        if i in moving_atoms:
+            lines[k] = lines[k][:30] + '{:8.3f}{:8.3f}{:8.3f}'.format(*xyz[i]) + lines[k][54:]
+    with open(pdb_file, 'w') as out:
+        out.writelines(lines)
+    if moved < len(moving):
+        print('Warning: '+str(len(moving) - moved)+' buried water or ion molecules could not be moved to free solvent')
+    return moved
 
 def read_in_merged_pdbs(merge, merge_coords, location):
     if os.path.exists(location):
