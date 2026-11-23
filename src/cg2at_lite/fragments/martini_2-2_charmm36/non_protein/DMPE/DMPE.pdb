@@ -6,8 +6,8 @@ ATOM      4  HN3 DMPE    1      18.450   8.146  23.828  0.00  0.00      MEMB H
 ATOM      5  C12 DMPE    1      19.020   6.706  25.238  0.00  0.00      MEMB C  
 ATOM      6 H12A DMPE    1      18.760   5.646  25.418  0.00  0.00      MEMB H  
 ATOM      7 H12B DMPE    1      18.680   7.326  26.088  0.00  0.00      MEMB H  
-ATOM      8  C11 DMPE    1      20.540   6.846  25.018  1.00  0.00      MEMB C  
-ATOM      9 H11A DMPE    1      20.840   6.186  24.178  1.00  1.00      MEMB H  
+ATOM      8  C11 DMPE    1      20.540   6.846  25.018  1.00  1.00      MEMB C  
+ATOM      9 H11A DMPE    1      20.840   6.186  24.178  1.00  0.00      MEMB H  
 ATOM     10 H11B DMPE    1      21.070   6.466  25.928  1.00  0.00      MEMB H  
 [ PO4 ]
 ATOM     11  P   DMPE    1      21.260   9.226  25.828  0.00  0.00      MEMB P  

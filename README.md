@@ -533,6 +533,7 @@ ATOM      3  CB  PHE     1      42.220  18.360  12.800  1.00  1.00           C
 
 - **Protein amino acids** should *not* include adjustable hydrogens — these are added automatically by `pdb2gmx`.
 - **Modified protein and non-protein** fragments *should* include all hydrogens, as they are not processed by `pdb2gmx`.
+- **Occupancy and B-factor columns** are not read by CG2AT2: the atoms joining one bead to the next are found from the bonds in the fragment's `.itp`. In the non-protein fragments the B-factor column documents them — the heavy atoms at the two ends of each bond that crosses from one bead to another share a number (atoms joined through several crossings share one), and every other atom is 0. After remapping a fragment, regenerate it with `python tools/fragment_link_column.py --write` (without `--write` it only reports fragments that are out of date); `tests/test_fragment_link_column.py` checks the bundled libraries.
 
 ### Optional Topology File
 
