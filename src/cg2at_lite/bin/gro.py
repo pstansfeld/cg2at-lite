@@ -612,26 +612,34 @@ def minimise_merged(residue_type, input_file):
 #### a molecule still trapped is replaced by the library molecule steered onto it (steer_molecule): every
 #### stereocentre comes from the fragment, the conformation from the trapped molecule. Kept if it leaves
 #### fewer molecules trapped after the strong minimisation with the neighbours
-    if restrained and os.path.exists(residue_type+'_merged.pdb') and not os.path.exists(residue_type+'_merged_steered.pdb'):
-        before = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb')
-        if before:
-            steered = steer_trapped_molecules(residue_type, residue_type+'_merged.pdb', residue_type+'_merged_steered.pdb')
-            after = before
-            if steered:
-                at_mod.unthread_rings(residue_type, residue_type+'_merged_steered.pdb', residue_type+'_merged_steered.pdb')
-                os.rename(residue_type+'_merged.pdb', residue_type+'_merged_before_steer.pdb')
-                steer_success, steer_converged = strong_minimise(residue_type, residue_type+'_merged_steered.pdb', 'steered_min')
-                after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb') if os.path.exists(residue_type+'_merged.pdb') else before
-                if after < before:
-                    success, converged = steer_success, steer_converged
-                    print('\n'+residue_type+': '+str(steered)+' of '+str(before)+' molecules still trapped were replaced by the library '
-                          'molecule steered onto them; '+str(after)+' left')
-                else:
-                    if os.path.exists(residue_type+'_merged.pdb'):
-                        os.replace(residue_type+'_merged.pdb', residue_type+'_merged_steer_failed.pdb')
-                    os.replace(residue_type+'_merged_before_steer.pdb', residue_type+'_merged.pdb')
-                    after = before
-            if after:
+#### Repeated (up to STEER_ROUNDS) while it helps: the strong minimisation after a round can leave a molecule
+#### trapped that was not before (pushed by a replaced neighbour), and the next round steers that one
+    if restrained and os.path.exists(residue_type+'_merged.pdb') and not os.path.exists(residue_type+'_merged_steered_1.pdb'):
+        after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb')
+        for round_number in range(1, STEER_ROUNDS + 1):
+            before = after
+            if not before:
+                break
+            tag = str(round_number)
+            steered = steer_trapped_molecules(residue_type, residue_type+'_merged.pdb', residue_type+'_merged_steered_'+tag+'.pdb',
+                                              'r'+tag+'_')
+            if not steered:
+                break
+            at_mod.unthread_rings(residue_type, residue_type+'_merged_steered_'+tag+'.pdb', residue_type+'_merged_steered_'+tag+'.pdb')
+            os.rename(residue_type+'_merged.pdb', residue_type+'_merged_before_steer_'+tag+'.pdb')
+            steer_success, steer_converged = strong_minimise(residue_type, residue_type+'_merged_steered_'+tag+'.pdb', 'steered_min_'+tag)
+            after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb') if os.path.exists(residue_type+'_merged.pdb') else before
+            if after < before:
+                success, converged = steer_success, steer_converged
+                print('\n'+residue_type+': steering round '+tag+': '+str(steered)+' of '+str(before)+' molecules still trapped were '
+                      'replaced by the library molecule steered onto them; '+str(after)+' left')
+            else:
+                if os.path.exists(residue_type+'_merged.pdb'):
+                    os.replace(residue_type+'_merged.pdb', residue_type+'_merged_steer_failed_'+tag+'.pdb')
+                os.replace(residue_type+'_merged_before_steer_'+tag+'.pdb', residue_type+'_merged.pdb')
+                after = before
+                break
+        if restrained and after:
                 print('\nWarning: '+residue_type+': '+str(after)+' molecules are still trapped (a ring held open or a centre squashed '
                       'or inverted; see '+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
 #### how far each molecule has moved from the CG beads it was built from
@@ -649,12 +657,18 @@ def minimise_merged(residue_type, input_file):
 
 #### (force constant kJ/mol/nm2, MD steps at 1 fs; 0 steps = steepest descents) for steering a trapped molecule
 STEER_STAGES = [(1000, 0), (1000, 3000), (5000, 2000), (20000, 0)]
+STEER_ROUNDS = 3
 
-def steer_mdp(name, k, steps):
+#### then, with its neighbours frozen around it: (force constant, MD steps at 0.5 fs; 0 steps = steepest descents)
+STEER_ENV_STAGES = [(20000, 0), (20000, 2000), (20000, 0)]
+
+def steer_mdp(name, k, steps, frozen=False, dt=0.001):
     with open(name, 'w') as mdp:
+        if frozen:
+            mdp.write('freezegrps = Environment\nfreezedim = Y Y Y\n')
         mdp.write('define = -DCISRES -DSTEERPOSRE -DSTEER_K='+str(k)+'\n')
         if steps:
-            mdp.write('integrator = md\ndt = 0.001\nnsteps = '+str(steps)+'\ntcoupl = v-rescale\ntc-grps = System\n'
+            mdp.write('integrator = md\ndt = '+str(dt)+'\nnsteps = '+str(steps)+'\ntcoupl = v-rescale\ntc-grps = System\n'
                       'tau-t = 0.1\nref-t = 300\ngen-vel = yes\ngen-temp = 300\nconstraints = h-bonds\n')
         else:
             mdp.write('integrator = steep\nnsteps = 2000\nemtol = 100\nemstep = 0.001\n')
@@ -671,13 +685,39 @@ def write_steer_gro(name, coords, names, residue_type, box):
                                                                      *(xyz / 10.0)))
         gro.write('{:10.5f}{:10.5f}{:10.5f}\n'.format(box, box, box))
 
-def steer_molecule(residue_type, residue, frag_template, sites, folder):
+def read_steer_gro(name, n_atoms):
+    with open(name) as gro:
+        rows = gro.readlines()[2:2 + n_atoms]
+    return np.array([[float(r[20:28]), float(r[28:36]), float(r[36:44])] for r in rows]) * 10.0
+
+def run_steer_stages(prefix, stages, start, topology, frozen=False, dt=0.001):
+#### grompp + mdrun for each (force constant, steps) stage from the gro file start, restrained to target.gro;
+#### returns the last stage's gro file, or None if a stage failed
+    previous = start
+    env = dict(os.environ, OMP_NUM_THREADS='1')
+    for k, (force, steps) in enumerate(stages):
+        stage = prefix+str(k)
+        steer_mdp(stage+'.mdp', force, steps, frozen=frozen, dt=dt)
+        command = [g_var.args.gmx, 'grompp', '-f', stage+'.mdp', '-c', previous, '-r', prefix+'target.gro', '-p', topology,
+                   '-o', stage, '-po', stage+'_out.mdp', '-maxwarn', '3'] + (['-n', 'steer.ndx'] if frozen else [])
+        with open('gromacs_outputs', 'a') as log:
+            subprocess.run(command, stdout=log, stderr=log, env=env)
+            subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
+                           stdout=log, stderr=log, env=env)
+        if not os.path.exists(stage+'.gro'):
+            return None
+        previous = stage+'.gro'
+    return previous
+
+def _steer_once(residue_type, residue, frag_template, sites, folder, environment=(), depth=1):
 #### steers the library molecule onto one trapped molecule: the whole-molecule fragment (every
 #### stereocentre right by construction) is superposed on the trapped molecule's heavy atoms away from
 #### the defect, then minimised and run briefly on its own with position restraints (rising force
 #### constants) to the trapped molecule's coordinates on every heavy atom except the defect site, and with
 #### the CISRES restraints that hold its stereocentres, rings and double bonds. It takes the trapped
-#### molecule's conformation, from its CG beads, without its defect. Returns the new residue, or None
+#### molecule's conformation, from its CG beads, without its defect. The result is then relaxed among its
+#### neighbouring molecules (environment: whole, in its periodic image, itp order), frozen, so the defect
+#### site, which is not restrained, is not left inside a neighbour. Returns the new residue, or None
     position, names = at_mod.molecule_itp_order(residue_type, frag_template)
     n_atoms = len(names)
     frag_xyz = {number: np.array(atom['coord'], dtype=float) / g_var.sf
@@ -686,7 +726,17 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
     if sorted(by_position) != list(range(1, n_atoms + 1)) or any(by_position[p] not in residue for p in by_position):
         return None
     heavy = [n for n in residue if n in frag_xyz and not gen.is_hydrogen(at_mod.frag_atom_name(frag_template, n))]
-    fit = [n for n in heavy if n not in sites]
+#### the unrestrained region reaches one bond further than the defect site and takes in any six-membered ring it
+#### touches: restraining the atoms just beyond the site to the trapped coordinates (e.g. the rest of a sugar
+#### ring folded the wrong way) rebuilds the same defect in the library molecule
+    _, bonded = at_mod.fragment_template(residue_type, frag_template)
+    free = set(sites)
+    for _ in range(depth):
+        free.update([x for atom in free for x in bonded.get(atom, ())])
+    for ring in at_mod.six_membered_rings(bonded):
+        if free.intersection(ring):
+            free.update(ring)
+    fit = [n for n in heavy if n not in free]
     if len(fit) < 3:
         return None
     P = np.array([frag_xyz[n] for n in fit])
@@ -695,7 +745,9 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
     rot = at_mod.kabsch_rotate(P - pc, Q - qc)
     start = np.array([(frag_xyz[by_position[p]] - pc).dot(rot) + qc for p in range(1, n_atoms + 1)])
     target = np.array([np.array(residue[by_position[p]]['coord'], dtype=float) for p in range(1, n_atoms + 1)])
-    box = float(np.ptp(target, axis=0).max()) / 10.0 + 4.0
+    environment = [np.asarray(m, dtype=float) for m in environment]
+    env_xyz = np.vstack(environment) if environment else np.zeros((0, 3))
+    box = float(np.ptp(np.vstack([target, env_xyz]), axis=0).max()) / 10.0 + 4.0
     offset = np.full(3, box * 5.0) - target.mean(axis=0)
     os.makedirs(folder, exist_ok=True)
     here = os.getcwd()
@@ -703,34 +755,44 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
         header = top.read().split('[ system ]')[0]
     header = header.replace('#include "../FINAL/', '#include "'+os.path.abspath('../FINAL')+'/')
     header = header.replace('#include "'+cisres_itp_name(residue_type)+'"', '#include "'+os.path.abspath(cisres_itp_name(residue_type))+'"')
+    molecule = gen.swap_to_solvent(residue_type)
     os.chdir(folder)
     try:
-        with open('topol.top', 'w') as top:
-            top.write(header+'#ifdef STEERPOSRE\n#include "steer_posre.itp"\n#endif\n\n[ system ]\nsteer\n\n[ molecules ]\n'
-                      +gen.swap_to_solvent(residue_type)+'    1\n')
+        for name, count in (('topol.top', 1), ('topol_env.top', 1 + len(environment))):
+            with open(name, 'w') as top:
+                top.write(header+'#ifdef STEERPOSRE\n#include "steer_posre.itp"\n#endif\n\n[ system ]\nsteer\n\n[ molecules ]\n'
+                          +molecule+'    '+str(count)+'\n')
         with open('steer_posre.itp', 'w') as posre:
             posre.write('[ position_restraints ]\n')
             for p in range(1, n_atoms + 1):
                 if by_position[p] in fit:
                     posre.write('{:6d}     1  STEER_K  STEER_K  STEER_K\n'.format(p))
+#### 1. on its own
         write_steer_gro('start.gro', start + offset, names, residue_type, box)
-        write_steer_gro('target.gro', target + offset, names, residue_type, box)
-        previous = 'start.gro'
-        env = dict(os.environ, OMP_NUM_THREADS='1')
-        for k, (force, steps) in enumerate(STEER_STAGES):
-            stage = 'steer_'+str(k)
-            steer_mdp(stage+'.mdp', force, steps)
-            with open('gromacs_outputs', 'a') as log:
-                subprocess.run([g_var.args.gmx, 'grompp', '-f', stage+'.mdp', '-c', previous, '-r', 'target.gro', '-p', 'topol.top',
-                                '-o', stage, '-po', stage+'_out.mdp', '-maxwarn', '3'], stdout=log, stderr=log, env=env)
-                subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
-                               stdout=log, stderr=log, env=env)
-            if not os.path.exists(stage+'.gro'):
-                return None
-            previous = stage+'.gro'
-        with open(previous) as gro:
-            rows = gro.readlines()[2:2 + n_atoms]
-        xyz = np.array([[float(r[20:28]), float(r[28:36]), float(r[36:44])] for r in rows]) * 10.0 - offset
+        write_steer_gro('steer_target.gro', target + offset, names, residue_type, box)
+        result = run_steer_stages('steer_', STEER_STAGES, 'start.gro', 'topol.top')
+        if result is None:
+            return None
+        xyz = read_steer_gro(result, n_atoms)
+#### 2. among its frozen neighbours (index groups 15 numbers to a line, as GROMACS writes them: it reads a
+#### long line in pieces and can split a number); if this fails the result on its own is kept
+        if environment:
+            def group(name, numbers):
+                numbers = [str(i) for i in numbers]
+                return '[ '+name+' ]\n'+''.join(' '.join(numbers[k:k + 15])+'\n' for k in range(0, len(numbers), 15))
+            total = n_atoms * (1 + len(environment))
+            with open('steer.ndx', 'w') as ndx:
+                ndx.write(group('System', range(1, total + 1)))
+                ndx.write(group('Environment', range(n_atoms + 1, total + 1)))
+            all_names = names * (1 + len(environment))
+            write_steer_gro('env_start.gro', np.vstack([xyz, env_xyz + offset]), all_names, residue_type, box)
+            write_steer_gro('env_target.gro', np.vstack([target, env_xyz]) + offset, all_names, residue_type, box)
+            result = run_steer_stages('env_', STEER_ENV_STAGES, 'env_start.gro', 'topol_env.top', frozen=True, dt=0.0005)
+            if result is not None:
+                relaxed = read_steer_gro(result, n_atoms)
+                if np.isfinite(relaxed).all():
+                    xyz = relaxed
+        xyz = xyz - offset
     finally:
         os.chdir(here)
     if not np.isfinite(xyz).all():
@@ -741,15 +803,52 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
             steered[number] = residue[number]
     return None if at_mod.trapped(steered, residue_type, frag_template) else steered
 
-def steer_trapped_molecules(residue_type, pdb_in, pdb_out):
+STEER_DEPTHS = (1, 3, 6)   # bonds beyond the defect site left unrestrained, tried in turn
+
+def steer_molecule(residue_type, residue, frag_template, sites, folder, environment=()):
+#### _steer_once with the unrestrained region widened step by step (STEER_DEPTHS) while the result is still
+#### trapped: e.g. an acyl chain placed where a methine hydrogen belongs holds its nitrogen on the wrong side
+#### of the ring unless the chain is free to move too. Returns the first result that is not trapped, or None
+    for k, depth in enumerate(STEER_DEPTHS):
+        result = _steer_once(residue_type, residue, frag_template, sites, folder+('' if k == 0 else '_d'+str(depth)),
+                             environment, depth)
+        if result is not None:
+            return result
+    return None
+
+STEER_NEIGHBOURS = 12.0   # A: molecules this close to a trapped one are frozen around it while it is steered
+
+def steer_trapped_molecules(residue_type, pdb_in, pdb_out, tag=''):
 #### steer_molecule on every molecule of a per-residue structure that is trapped; returns the number replaced
-    steered, count = [0], [0]
+    steered, count, index = [0], [0], [-1]
+    with open(pdb_in) as pdb_input:
+        lines = pdb_input.readlines()
+    box = at_mod.pdb_box(lines)
+    lengths = np.diag(box) if box is not None else None
+    atoms = np.array([[float(l[30:38]), float(l[38:46]), float(l[46:54])] for l in lines if l.startswith('ATOM')])
     def fix(residue, frag_template):
+        index[0] += 1
         sites = at_mod.trap_sites(residue, residue_type, frag_template)
         if not sites:
             return residue
         count[0] += 1
-        new = steer_molecule(residue_type, residue, frag_template, sites, 'STEER_TRAPPED/'+str(count[0]))
+        position, names = at_mod.molecule_itp_order(residue_type, frag_template)
+        n_atoms = len(names)
+        own = np.array([np.array(atom['coord'], dtype=float) for atom in residue.values()])
+        centre = own.mean(axis=0)
+        environment = []
+        for m in range(len(atoms) // n_atoms):
+            if m == index[0]:
+                continue
+            xyz = atoms[m * n_atoms:(m + 1) * n_atoms].copy()
+            if lengths is not None:
+                xyz -= lengths * np.round((xyz - xyz[0]) / lengths)
+                xyz -= lengths * np.round((xyz.mean(axis=0) - centre) / lengths)
+            if np.linalg.norm(xyz.mean(axis=0) - centre) > 60.0:
+                continue
+            if cKDTree(own).query(xyz, distance_upper_bound=STEER_NEIGHBOURS)[0].min() < STEER_NEIGHBOURS:
+                environment.append(xyz)
+        new = steer_molecule(residue_type, residue, frag_template, sites, 'STEER_TRAPPED/'+tag+str(count[0]), environment)
         if new is None:
             return residue
         steered[0] += 1

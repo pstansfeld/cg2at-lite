@@ -657,8 +657,38 @@ def fragment_groups(frag_template):
 #### {group: [atom numbers]} of a fragment's rigid groups ([ GROUPS ] in its .top; a bead is its own group otherwise)
     return {group: [number for bead in frag_template[group].values() for number in bead] for group in frag_template}
 
+_h_side_cache = {}
+
+def h_side_template(resname, frag_template):
+#### {centre: side} for the stereocentres whose fourth substituent is a methine hydrogen: the side of the plane
+#### through its three heavy neighbours that the hydrogen sits on in the fragment (+1/-1)
+    if resname not in _h_side_cache:
+        hydrogens = {number: np.array(atom['coord'], dtype=float) for group in frag_template.values()
+                     for bead in group.values() for number, atom in bead.items() if gen.is_hydrogen(atom['atom'])}
+        coords, _ = fragment_template(resname, frag_template)
+        sides = {}
+        for c, three, fourth, carried, sign in stereo_template(resname, frag_template):
+            if fourth in hydrogens:
+                a, b, d = [coords[x] for x in three]
+                sides[c] = np.sign(np.dot(hydrogens[fourth] - coords[c], np.cross(b - a, d - a)))
+        _h_side_cache[resname] = sides
+    return _h_side_cache[resname]
+
+def h_through(residue, resname, frag_template):
+#### stereocentres whose methine hydrogen has been pushed through to the face of its three heavy neighbours
+#### (their handedness can still read right, but the centre is folded the wrong way)
+    sides, out = h_side_template(resname, frag_template), []
+    for c, three, fourth, carried, sign in stereo_template(resname, frag_template):
+        if c in sides and all(x in residue for x in [c, fourth] + three):
+            a, b, d = [np.array(residue[x]['coord'], dtype=float) for x in three]
+            h = np.array(residue[fourth]['coord'], dtype=float) - np.array(residue[c]['coord'], dtype=float)
+            if np.sign(np.dot(h, np.cross(b - a, d - a))) != sides[c]:
+                out.append((c, three))
+    return out
+
 def trapped(residue, resname, frag_template):
-#### a molecule caught in a geometry minimisation cannot leave: a stereocentre inverted or splayed flat, a
+#### a molecule caught in a geometry minimisation cannot leave: a stereocentre inverted or splayed flat (or its
+#### methine hydrogen pushed through to its heavy neighbours' face), a
 #### bond squashed below 85% of its length (a centre dragged through), or a ring bond stretched over 10%
 #### (a ring held open). A stretched bond elsewhere (e.g. between acyl chains still pulling apart) is not
 #### a trap and is left to the minimisation
@@ -680,7 +710,7 @@ def trapped(residue, resname, frag_template):
         for a, b in itertools.combinations(v, 2):
             if np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)) < math.cos(math.radians(150)):
                 return True
-    return False
+    return bool(h_through(residue, resname, frag_template))
 
 def trap_sites(residue, resname, frag_template):
 #### the heavy atoms where a molecule is trapped (the tests of trapped()): an inverted or flat stereocentre
@@ -709,6 +739,8 @@ def trap_sites(residue, resname, frag_template):
                    for a, b in itertools.combinations(v, 2))
         if flat or np.sign(np.dot(v[0], np.cross(v[1], v[2]))) != sign:
             core.update([c] + list(three))
+    for c, three in h_through(residue, resname, frag_template):
+        core.update([c] + list(three))
     sites = set(core)
     for a in core:
         sites.update(bonded.get(a, ()))
