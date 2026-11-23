@@ -191,6 +191,11 @@ def COM(mass, fragment):
             print(mass)
             raise TopologyError('missing the mass one of the atoms in '+fragment[bead][1]['res_type'])      
 
+def virtual_bead(atoms):
+#### a fragment bead holding only hydrogens stands for a CG virtual site (e.g. a sugar's ring centre, VS1-VS4
+#### of KLA): its atoms (one ring hydrogen) are not where the virtual site is
+    return len(atoms) > 0 and all(gen.is_hydrogen(atom['atom']) for atom in atoms.values())
+
 def rigid_fit(group, frag_mass, resid, cg):
 #### rigid fits group to CG beads
     rigid_mass_at = []
@@ -200,7 +205,7 @@ def rigid_fit(group, frag_mass, resid, cg):
         rigid_mass_cg.append(cg[bead]['coord'])
     rigid_mass_at = COM(rigid_mass_at, group)
     rigid_mass_cg = np.mean(rigid_mass_cg, axis=0)
-    
+
     group, COM_vector = align_at_frag_to_CG_frag(rigid_mass_at, rigid_mass_cg, group)
     at_frag_centers = {}
     cg_frag_centers = {}
@@ -1245,6 +1250,11 @@ def correct_group_spin(residue, group_fit, template):
 #### spins a newly placed group about the axis through its connection atoms so the
 #### dihedrals across its bond to the already placed atoms match the fragment template
     t_coords, bonded = template
+#### a rigid group of three or more (real) beads is oriented by its fit to them, with no free spin left: spinning it
+#### to the fragment's dihedrals across its join gave up that fit (KLA GlcN II: a bead from 0.2 to 3.7 A off, the
+#### start of correct_group_chirality moving groups 8-15 A off their beads)
+    if sum(1 for atoms in group_fit.values() if atoms and not virtual_bead(atoms)) >= 3:
+        return residue
     group_atoms = {atom for bead in group_fit.values() for atom in bead if atom in t_coords}
     placed = {atom for atom in residue if atom in t_coords and atom not in group_atoms}
     if not group_atoms or not placed:
@@ -1370,12 +1380,14 @@ def group_junctions(resname, frag_template, groups):
     _junction_cache[resname] = ({g: (parent[g], descendants[g]) for g in order}, order, checks, frag_xyz)
     return _junction_cache[resname]
 
-def correct_group_chirality(residue, resname, frag_template, groups, scale=1.0):
+def correct_group_chirality(residue, resname, frag_template, groups, scale=1.0, rigid_only=False):
 #### residue: {atom number: atom} with every group placed. Walks out from the middle of the molecule;
 #### where a stereocentre at a group's bond to its parent has the wrong handedness, the group is turned
 #### to the fragment's orientation relative to its parent (superposing the fragment on the parent's placed
 #### atoms), keeping its own centre where possible; no other group moves. scale: 1 on freshly placed fragments, 1/sf on a
-#### minimised structure
+#### minimised structure. rigid_only: only rigid groups of three or more beads are re-placed; a junction at a smaller
+#### group is left to correct_stereocentres, which mends the centre in place (re-placing a one-bead group from the
+#### fragment's geometry took KLA's acyl-chain beads 5-15 A off their CG beads)
     family, order, checks, frag_xyz = group_junctions(resname, frag_template, groups)
     if scale != 1.0:
         frag_xyz = {x: xyz * scale for x, xyz in frag_xyz.items()}
@@ -1383,6 +1395,9 @@ def correct_group_chirality(residue, resname, frag_template, groups, scale=1.0):
     for g in order:
         p, beyond = family[g]
         if p is None or not checks.get(g):
+            continue
+        if rigid_only and sum(1 for atoms in frag_template.get(g, {}).values()
+                              if atoms and not virtual_bead(atoms)) < 3:
             continue
         wrong = False
         for c, near, sign in checks[g]:
