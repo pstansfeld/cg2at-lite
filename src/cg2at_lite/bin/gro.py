@@ -88,15 +88,31 @@ def gromacs(gro):
     #### all gromacs outputs will be saved into gromacs_outputs within the folder it is run
         with open('gromacs_outputs', 'a') as checks:
             checks.write(out)
-    #### standard catch for failed gromacs commands
+    #### standard catch for failed gromacs commands; a command the caller retries if it fails (g_var.gromacs_may_fail,
+    #### e.g. MD at 2 fs before a 1 fs rerun) is recorded in gromacs_outputs and returned as failed, but not announced
+            loud = not getattr(g_var, 'gromacs_may_fail', False)
             for err in possible_errors:
                 if err in out:
-                    print('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
+    #### steepest descents stopping short of emtol is returned as a failure but not announced: every caller checks
+    #### convergence or its output and carries on (a repair pass, the structure from before, MD from the result)
+                    if loud and err not in ('did not converge to Fmax ', 'but did not reach the requested Fmax '):
+                        print('\n\nThere was an error with the following command:\n'+cmd+'\nThe exact error can be read in: '+os.getcwd()+'/gromacs_outputs\n')
                     if 'residue naming needs to be fixed' in out and 'PROTEIN_aligned' in out:
                         print('\n\n###  The supplied protein structure contains incorrectly named or missing atoms  ###\n\n')
                     error = True
 #                if err == 'threads is only supported with thread-MPI':
 #                    g_var.ntmpi = False
+    #### a command killed from outside (e.g. by the out-of-memory killer or a scheduler's memory limit)
+    #### leaves no GROMACS error in its output, only a non-zero exit code: it is a failure all the same
+            if output.returncode != 0 and not error:
+                code = output.returncode
+                signal = code - 128 if code > 128 else (-code if code < 0 else None)
+                note = (' (killed by signal '+str(signal)+(', e.g. out of memory' if signal == 9 else '')+')') if signal else ''
+                if loud:
+                    print('\n\nThere was an error with the following command:\n'+cmd+'\nIt exited with code '+str(code)+note+
+                          '; its output is in: '+os.getcwd()+'/gromacs_outputs\n')
+                checks.write('\n# exited with code '+str(code)+note+'\n')
+                error = True
             if 'number of atoms in the topology (' in out:
                 print('\n'+out+'\n\n')
                 print('{0:^90}\n\n{1:^90}\n'.format('***NOTE***','If it is only out by multiples of two, check cysteine distances and increase -cys cutoff'))
@@ -602,26 +618,34 @@ def minimise_merged(residue_type, input_file):
 #### a molecule still trapped is replaced by the library molecule steered onto it (steer_molecule): every
 #### stereocentre comes from the fragment, the conformation from the trapped molecule. Kept if it leaves
 #### fewer molecules trapped after the strong minimisation with the neighbours
-    if restrained and os.path.exists(residue_type+'_merged.pdb') and not os.path.exists(residue_type+'_merged_steered.pdb'):
-        before = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb')
-        if before:
-            steered = steer_trapped_molecules(residue_type, residue_type+'_merged.pdb', residue_type+'_merged_steered.pdb')
-            after = before
-            if steered:
-                at_mod.unthread_rings(residue_type, residue_type+'_merged_steered.pdb', residue_type+'_merged_steered.pdb')
-                os.rename(residue_type+'_merged.pdb', residue_type+'_merged_before_steer.pdb')
-                steer_success, steer_converged = strong_minimise(residue_type, residue_type+'_merged_steered.pdb', 'steered_min')
-                after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb') if os.path.exists(residue_type+'_merged.pdb') else before
-                if after < before:
-                    success, converged = steer_success, steer_converged
-                    print('\n'+residue_type+': '+str(steered)+' of '+str(before)+' molecules still trapped were replaced by the library '
-                          'molecule steered onto them; '+str(after)+' left')
-                else:
-                    if os.path.exists(residue_type+'_merged.pdb'):
-                        os.replace(residue_type+'_merged.pdb', residue_type+'_merged_steer_failed.pdb')
-                    os.replace(residue_type+'_merged_before_steer.pdb', residue_type+'_merged.pdb')
-                    after = before
-            if after:
+#### Repeated (up to STEER_ROUNDS) while it helps: the strong minimisation after a round can leave a molecule
+#### trapped that was not before (pushed by a replaced neighbour), and the next round steers that one
+    if restrained and os.path.exists(residue_type+'_merged.pdb') and not os.path.exists(residue_type+'_merged_steered_1.pdb'):
+        after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb')
+        for round_number in range(1, STEER_ROUNDS + 1):
+            before = after
+            if not before:
+                break
+            tag = str(round_number)
+            steered = steer_trapped_molecules(residue_type, residue_type+'_merged.pdb', residue_type+'_merged_steered_'+tag+'.pdb',
+                                              'r'+tag+'_')
+            if not steered:
+                break
+            at_mod.unthread_rings(residue_type, residue_type+'_merged_steered_'+tag+'.pdb', residue_type+'_merged_steered_'+tag+'.pdb')
+            os.rename(residue_type+'_merged.pdb', residue_type+'_merged_before_steer_'+tag+'.pdb')
+            steer_success, steer_converged = strong_minimise(residue_type, residue_type+'_merged_steered_'+tag+'.pdb', 'steered_min_'+tag)
+            after = at_mod.count_trapped(residue_type, residue_type+'_merged.pdb') if os.path.exists(residue_type+'_merged.pdb') else before
+            if after < before:
+                success, converged = steer_success, steer_converged
+                print('\n'+residue_type+': steering round '+tag+': '+str(steered)+' of '+str(before)+' molecules still trapped were '
+                      'replaced by the library molecule steered onto them; '+str(after)+' left')
+            else:
+                if os.path.exists(residue_type+'_merged.pdb'):
+                    os.replace(residue_type+'_merged.pdb', residue_type+'_merged_steer_failed_'+tag+'.pdb')
+                os.replace(residue_type+'_merged_before_steer_'+tag+'.pdb', residue_type+'_merged.pdb')
+                after = before
+                break
+        if restrained and after:
                 print('\nWarning: '+residue_type+': '+str(after)+' molecules are still trapped (a ring held open or a centre squashed '
                       'or inverted; see '+g_var.working_dir+residue_type+'/'+residue_type+'_merged.pdb)')
 #### how far each molecule has moved from the CG beads it was built from
@@ -638,13 +662,21 @@ def minimise_merged(residue_type, input_file):
     return success
 
 #### (force constant kJ/mol/nm2, MD steps at 1 fs; 0 steps = steepest descents) for steering a trapped molecule
-STEER_STAGES = [(1000, 0), (1000, 3000), (5000, 2000), (20000, 0)]
+STEER_STAGES = [(1000, 0), (1000, 6000), (5000, 4000), (20000, 0)]   # MD at 0.5 fs (1 fs blew up in the
+                                                                     # step from 1000 to 5000 kJ/mol/nm2)
+STEER_TIMEOUT = 300   # s for any one steering grompp/mdrun: a run that has gone to NaN can hang in its pair search
+STEER_ROUNDS = 3
 
-def steer_mdp(name, k, steps):
+#### then, with its neighbours frozen around it: (force constant, MD steps at 0.5 fs; 0 steps = steepest descents)
+STEER_ENV_STAGES = [(20000, 0), (20000, 2000), (20000, 0)]
+
+def steer_mdp(name, k, steps, frozen=False, dt=0.001):
     with open(name, 'w') as mdp:
+        if frozen:
+            mdp.write('freezegrps = Environment\nfreezedim = Y Y Y\n')
         mdp.write('define = -DCISRES -DSTEERPOSRE -DSTEER_K='+str(k)+'\n')
         if steps:
-            mdp.write('integrator = md\ndt = 0.001\nnsteps = '+str(steps)+'\ntcoupl = v-rescale\ntc-grps = System\n'
+            mdp.write('integrator = md\ndt = '+str(dt)+'\nnsteps = '+str(steps)+'\ntcoupl = v-rescale\ntc-grps = System\n'
                       'tau-t = 0.1\nref-t = 300\ngen-vel = yes\ngen-temp = 300\nconstraints = h-bonds\n')
         else:
             mdp.write('integrator = steep\nnsteps = 2000\nemtol = 100\nemstep = 0.001\n')
@@ -661,13 +693,43 @@ def write_steer_gro(name, coords, names, residue_type, box):
                                                                      *(xyz / 10.0)))
         gro.write('{:10.5f}{:10.5f}{:10.5f}\n'.format(box, box, box))
 
-def steer_molecule(residue_type, residue, frag_template, sites, folder):
+def read_steer_gro(name, n_atoms):
+    with open(name) as gro:
+        rows = gro.readlines()[2:2 + n_atoms]
+    return np.array([[float(r[20:28]), float(r[28:36]), float(r[36:44])] for r in rows]) * 10.0
+
+def run_steer_stages(prefix, stages, start, topology, frozen=False, dt=0.001):
+#### grompp + mdrun for each (force constant, steps) stage from the gro file start, restrained to target.gro;
+#### returns the last stage's gro file, or None if a stage failed
+    previous = start
+    env = dict(os.environ, OMP_NUM_THREADS='1')
+    for k, (force, steps) in enumerate(stages):
+        stage = prefix+str(k)
+        steer_mdp(stage+'.mdp', force, steps, frozen=frozen, dt=dt)
+        command = [g_var.args.gmx, 'grompp', '-f', stage+'.mdp', '-c', previous, '-r', prefix+'target.gro', '-p', topology,
+                   '-o', stage, '-po', stage+'_out.mdp', '-maxwarn', '3'] + (['-n', 'steer.ndx'] if frozen else [])
+        with open('gromacs_outputs', 'a') as log:
+            try:
+                subprocess.run(command, stdout=log, stderr=log, env=env, timeout=STEER_TIMEOUT)
+                subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
+                               stdout=log, stderr=log, env=env, timeout=STEER_TIMEOUT)
+            except subprocess.TimeoutExpired:
+                log.write('\n# stopped after '+str(STEER_TIMEOUT)+' s (a run gone to NaN can hang)\n')
+                return None
+        if not os.path.exists(stage+'.gro'):
+            return None
+        previous = stage+'.gro'
+    return previous
+
+def _steer_once(residue_type, residue, frag_template, sites, folder, environment=(), depth=1):
 #### steers the library molecule onto one trapped molecule: the whole-molecule fragment (every
 #### stereocentre right by construction) is superposed on the trapped molecule's heavy atoms away from
 #### the defect, then minimised and run briefly on its own with position restraints (rising force
 #### constants) to the trapped molecule's coordinates on every heavy atom except the defect site, and with
 #### the CISRES restraints that hold its stereocentres, rings and double bonds. It takes the trapped
-#### molecule's conformation, from its CG beads, without its defect. Returns the new residue, or None
+#### molecule's conformation, from its CG beads, without its defect. The result is then relaxed among its
+#### neighbouring molecules (environment: whole, in its periodic image, itp order), frozen, so the defect
+#### site, which is not restrained, is not left inside a neighbour. Returns the new residue, or None
     position, names = at_mod.molecule_itp_order(residue_type, frag_template)
     n_atoms = len(names)
     frag_xyz = {number: np.array(atom['coord'], dtype=float) / g_var.sf
@@ -676,7 +738,17 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
     if sorted(by_position) != list(range(1, n_atoms + 1)) or any(by_position[p] not in residue for p in by_position):
         return None
     heavy = [n for n in residue if n in frag_xyz and not gen.is_hydrogen(at_mod.frag_atom_name(frag_template, n))]
-    fit = [n for n in heavy if n not in sites]
+#### the unrestrained region reaches one bond further than the defect site and takes in any six-membered ring it
+#### touches: restraining the atoms just beyond the site to the trapped coordinates (e.g. the rest of a sugar
+#### ring folded the wrong way) rebuilds the same defect in the library molecule
+    _, bonded = at_mod.fragment_template(residue_type, frag_template)
+    free = set(sites)
+    for _ in range(depth):
+        free.update([x for atom in free for x in bonded.get(atom, ())])
+    for ring in at_mod.six_membered_rings(bonded):
+        if free.intersection(ring):
+            free.update(ring)
+    fit = [n for n in heavy if n not in free]
     if len(fit) < 3:
         return None
     P = np.array([frag_xyz[n] for n in fit])
@@ -685,7 +757,9 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
     rot = at_mod.kabsch_rotate(P - pc, Q - qc)
     start = np.array([(frag_xyz[by_position[p]] - pc).dot(rot) + qc for p in range(1, n_atoms + 1)])
     target = np.array([np.array(residue[by_position[p]]['coord'], dtype=float) for p in range(1, n_atoms + 1)])
-    box = float(np.ptp(target, axis=0).max()) / 10.0 + 4.0
+    environment = [np.asarray(m, dtype=float) for m in environment]
+    env_xyz = np.vstack(environment) if environment else np.zeros((0, 3))
+    box = float(np.ptp(np.vstack([target, env_xyz]), axis=0).max()) / 10.0 + 4.0
     offset = np.full(3, box * 5.0) - target.mean(axis=0)
     os.makedirs(folder, exist_ok=True)
     here = os.getcwd()
@@ -693,34 +767,44 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
         header = top.read().split('[ system ]')[0]
     header = header.replace('#include "../FINAL/', '#include "'+os.path.abspath('../FINAL')+'/')
     header = header.replace('#include "'+cisres_itp_name(residue_type)+'"', '#include "'+os.path.abspath(cisres_itp_name(residue_type))+'"')
+    molecule = gen.swap_to_solvent(residue_type)
     os.chdir(folder)
     try:
-        with open('topol.top', 'w') as top:
-            top.write(header+'#ifdef STEERPOSRE\n#include "steer_posre.itp"\n#endif\n\n[ system ]\nsteer\n\n[ molecules ]\n'
-                      +gen.swap_to_solvent(residue_type)+'    1\n')
+        for name, count in (('topol.top', 1), ('topol_env.top', 1 + len(environment))):
+            with open(name, 'w') as top:
+                top.write(header+'#ifdef STEERPOSRE\n#include "steer_posre.itp"\n#endif\n\n[ system ]\nsteer\n\n[ molecules ]\n'
+                          +molecule+'    '+str(count)+'\n')
         with open('steer_posre.itp', 'w') as posre:
             posre.write('[ position_restraints ]\n')
             for p in range(1, n_atoms + 1):
                 if by_position[p] in fit:
                     posre.write('{:6d}     1  STEER_K  STEER_K  STEER_K\n'.format(p))
+#### 1. on its own
         write_steer_gro('start.gro', start + offset, names, residue_type, box)
-        write_steer_gro('target.gro', target + offset, names, residue_type, box)
-        previous = 'start.gro'
-        env = dict(os.environ, OMP_NUM_THREADS='1')
-        for k, (force, steps) in enumerate(STEER_STAGES):
-            stage = 'steer_'+str(k)
-            steer_mdp(stage+'.mdp', force, steps)
-            with open('gromacs_outputs', 'a') as log:
-                subprocess.run([g_var.args.gmx, 'grompp', '-f', stage+'.mdp', '-c', previous, '-r', 'target.gro', '-p', 'topol.top',
-                                '-o', stage, '-po', stage+'_out.mdp', '-maxwarn', '3'], stdout=log, stderr=log, env=env)
-                subprocess.run([g_var.args.gmx, 'mdrun', '-deffnm', stage, '-ntmpi', '1', '-ntomp', '1', '-nb', 'cpu', '-pin', 'off'],
-                               stdout=log, stderr=log, env=env)
-            if not os.path.exists(stage+'.gro'):
-                return None
-            previous = stage+'.gro'
-        with open(previous) as gro:
-            rows = gro.readlines()[2:2 + n_atoms]
-        xyz = np.array([[float(r[20:28]), float(r[28:36]), float(r[36:44])] for r in rows]) * 10.0 - offset
+        write_steer_gro('steer_target.gro', target + offset, names, residue_type, box)
+        result = run_steer_stages('steer_', STEER_STAGES, 'start.gro', 'topol.top', dt=0.0005)
+        if result is None:
+            return None
+        xyz = read_steer_gro(result, n_atoms)
+#### 2. among its frozen neighbours (index groups 15 numbers to a line, as GROMACS writes them: it reads a
+#### long line in pieces and can split a number); if this fails the result on its own is kept
+        if environment:
+            def group(name, numbers):
+                numbers = [str(i) for i in numbers]
+                return '[ '+name+' ]\n'+''.join(' '.join(numbers[k:k + 15])+'\n' for k in range(0, len(numbers), 15))
+            total = n_atoms * (1 + len(environment))
+            with open('steer.ndx', 'w') as ndx:
+                ndx.write(group('System', range(1, total + 1)))
+                ndx.write(group('Environment', range(n_atoms + 1, total + 1)))
+            all_names = names * (1 + len(environment))
+            write_steer_gro('env_start.gro', np.vstack([xyz, env_xyz + offset]), all_names, residue_type, box)
+            write_steer_gro('env_target.gro', np.vstack([target, env_xyz]) + offset, all_names, residue_type, box)
+            result = run_steer_stages('env_', STEER_ENV_STAGES, 'env_start.gro', 'topol_env.top', frozen=True, dt=0.0005)
+            if result is not None:
+                relaxed = read_steer_gro(result, n_atoms)
+                if np.isfinite(relaxed).all():
+                    xyz = relaxed
+        xyz = xyz - offset
     finally:
         os.chdir(here)
     if not np.isfinite(xyz).all():
@@ -731,15 +815,52 @@ def steer_molecule(residue_type, residue, frag_template, sites, folder):
             steered[number] = residue[number]
     return None if at_mod.trapped(steered, residue_type, frag_template) else steered
 
-def steer_trapped_molecules(residue_type, pdb_in, pdb_out):
+STEER_DEPTHS = (1, 3, 6)   # bonds beyond the defect site left unrestrained, tried in turn
+
+def steer_molecule(residue_type, residue, frag_template, sites, folder, environment=()):
+#### _steer_once with the unrestrained region widened step by step (STEER_DEPTHS) while the result is still
+#### trapped: e.g. an acyl chain placed where a methine hydrogen belongs holds its nitrogen on the wrong side
+#### of the ring unless the chain is free to move too. Returns the first result that is not trapped, or None
+    for k, depth in enumerate(STEER_DEPTHS):
+        result = _steer_once(residue_type, residue, frag_template, sites, folder+('' if k == 0 else '_d'+str(depth)),
+                             environment, depth)
+        if result is not None:
+            return result
+    return None
+
+STEER_NEIGHBOURS = 12.0   # A: molecules this close to a trapped one are frozen around it while it is steered
+
+def steer_trapped_molecules(residue_type, pdb_in, pdb_out, tag=''):
 #### steer_molecule on every molecule of a per-residue structure that is trapped; returns the number replaced
-    steered, count = [0], [0]
+    steered, count, index = [0], [0], [-1]
+    with open(pdb_in) as pdb_input:
+        lines = pdb_input.readlines()
+    box = at_mod.pdb_box(lines)
+    lengths = np.diag(box) if box is not None else None
+    atoms = np.array([[float(l[30:38]), float(l[38:46]), float(l[46:54])] for l in lines if l.startswith('ATOM')])
     def fix(residue, frag_template):
+        index[0] += 1
         sites = at_mod.trap_sites(residue, residue_type, frag_template)
         if not sites:
             return residue
         count[0] += 1
-        new = steer_molecule(residue_type, residue, frag_template, sites, 'STEER_TRAPPED/'+str(count[0]))
+        position, names = at_mod.molecule_itp_order(residue_type, frag_template)
+        n_atoms = len(names)
+        own = np.array([np.array(atom['coord'], dtype=float) for atom in residue.values()])
+        centre = own.mean(axis=0)
+        environment = []
+        for m in range(len(atoms) // n_atoms):
+            if m == index[0]:
+                continue
+            xyz = atoms[m * n_atoms:(m + 1) * n_atoms].copy()
+            if lengths is not None:
+                xyz -= lengths * np.round((xyz - xyz[0]) / lengths)
+                xyz -= lengths * np.round((xyz.mean(axis=0) - centre) / lengths)
+            if np.linalg.norm(xyz.mean(axis=0) - centre) > 60.0:
+                continue
+            if cKDTree(own).query(xyz, distance_upper_bound=STEER_NEIGHBOURS)[0].min() < STEER_NEIGHBOURS:
+                environment.append(xyz)
+        new = steer_molecule(residue_type, residue, frag_template, sites, 'STEER_TRAPPED/'+tag+str(count[0]), environment)
         if new is None:
             return residue
         steered[0] += 1
@@ -783,19 +904,35 @@ def run_parallel_minimise(jobs):
 #### at most 3 at a time: a residue type's minimisation barely speeds up with more threads, so the
 #### slowest type sets the floor, and beyond 3 side by side each job slows down (EptA in POPE/POPG/CARD
 #### on 10 cores: 24 s one at a time, 13 s two, 10 s three, 13 s five, 17 s seven)
+#### solvent and ions run first, one at a time with every core: water is by far the largest system (and
+#### the most memory) yet takes seconds, so running it beside the lipids only adds contention (on a
+#### memory-limited node its mdrun was killed part-way, and the build failed at the merge)
+    solvent = [job for job in jobs if job[0] in g_var.sol_residues + g_var.ion_residues]
+    jobs = [job for job in jobs if job not in solvent]
+    results = dict(_minimise_job(job) for job in solvent)
+    os.chdir(g_var.working_dir)
     workers = min(len(jobs), 3, max(1, cores // 2))
     if workers < 2 or 'fork' not in mp.get_all_start_methods():
-        return dict(_minimise_job(job) for job in jobs)
+        results.update(dict(_minimise_job(job) for job in jobs))
+        os.chdir(g_var.working_dir)
+        return results
     g_var.mdrun_ntomp = max(1, cores // workers)
     print('Minimising '+', '.join(job[0] for job in jobs)+' side by side ('+str(workers)+' at a time, '
           +str(g_var.mdrun_ntomp)+' threads each)\n')
     sys.stdout.flush()
     try:
         with mp.get_context('fork').Pool(workers, maxtasksperchild=1) as pool:
-            results = dict(pool.imap_unordered(_minimise_job, jobs))
+            results.update(dict(pool.imap_unordered(_minimise_job, jobs)))
     finally:
         g_var.mdrun_ntomp = None
         os.chdir(g_var.working_dir)
+#### a residue type left without its minimised structure (its mdrun killed or failed) is run again
+#### here, on its own with every core, before the merge needs it
+    for job in jobs:
+        if not os.path.exists(g_var.working_dir+job[0]+'/'+job[0]+'_merged.pdb'):
+            print('\n'+job[0]+': no minimised structure from the side-by-side run; minimising it again on its own\n')
+            results[job[0]] = _minimise_job(job)[1]
+            os.chdir(g_var.working_dir)
     return results
 
 def strong_minimise(residue_type, input_file, name):
@@ -835,7 +972,13 @@ def em_pass(residue_type, mdp, define, input_file, name):
                 '-c '+input_file+' '+
                 '-o MIN/'+residue_type+'_merged_'+name+' -maxwarn 1', 'MIN/'+residue_type+'_merged_'+name+'.tpr'])
         os.chdir('MIN')
-        gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+residue_type+'_merged_'+name+' -c ../'+output, '../'+output])
+#### the callers check whether steepest descents converged and fall back if not (an unrestrained pass, the
+#### strong pass, the structure from before), so a pass that stops short is not announced as an error
+        g_var.gromacs_may_fail = True
+        try:
+            gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+residue_type+'_merged_'+name+' -c ../'+output, '../'+output])
+        finally:
+            g_var.gromacs_may_fail = False
         os.chdir('..')
     converged = False
     log = 'MIN/'+residue_type+'_merged_'+name+'.log'
@@ -1028,9 +1171,13 @@ def steer_to_aligned(protein_type, fc, input_file, first=False):
                 ' -maxwarn '+str(2), 'STEER/'+deffnm+'.tpr'])
         os.chdir('STEER')
         # removed flag -nt '+str(g_var.args.ncpus)+'
-        complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
-                                     ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
-                                     , deffnm+'.pdb'])
+        g_var.gromacs_may_fail = not suffix and len(attempts) > 1
+        try:
+            complete, equil = gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
+                                         ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
+                                         , deffnm+'.pdb'])
+        finally:
+            g_var.gromacs_may_fail = False
         if not equil and os.path.exists(deffnm+'.pdb'):
             break
         if not suffix and len(attempts) > 1:
@@ -1069,9 +1216,13 @@ def run_nvt(input_file):
                 ' -maxwarn '+str(2), 'NVT/'+deffnm+'.tpr'])   
         os.chdir(g_var.merged_directory+'NVT')
         # removed flag -nt '+str(g_var.args.ncpus)+'
-        gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
-                ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
-                , deffnm+'.pdb'])  
+        g_var.gromacs_may_fail = name == 'nvt'
+        try:
+            gromacs([g_var.args.gmx+' mdrun -ntmpi 1 -v -pin on -deffnm '+deffnm+
+                    ' -c '+deffnm+'.pdb -cpo '+deffnm+'.cpt'
+                    , deffnm+'.pdb'])
+        finally:
+            g_var.gromacs_may_fail = False
         if os.path.exists(deffnm+'.pdb'):
             break
         print('\nNVT with a '+str(timestep*1000)+' fs timestep failed; retrying at half the timestep')
