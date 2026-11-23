@@ -97,6 +97,16 @@ def gromacs(gro):
                     error = True
 #                if err == 'threads is only supported with thread-MPI':
 #                    g_var.ntmpi = False
+    #### a command killed from outside (e.g. by the out-of-memory killer or a scheduler's memory limit)
+    #### leaves no GROMACS error in its output, only a non-zero exit code: it is a failure all the same
+            if output.returncode != 0 and not error:
+                code = output.returncode
+                signal = code - 128 if code > 128 else (-code if code < 0 else None)
+                note = (' (killed by signal '+str(signal)+(', e.g. out of memory' if signal == 9 else '')+')') if signal else ''
+                print('\n\nThere was an error with the following command:\n'+cmd+'\nIt exited with code '+str(code)+note+
+                      '; its output is in: '+os.getcwd()+'/gromacs_outputs\n')
+                checks.write('\n# exited with code '+str(code)+note+'\n')
+                error = True
             if 'number of atoms in the topology (' in out:
                 print('\n'+out+'\n\n')
                 print('{0:^90}\n\n{1:^90}\n'.format('***NOTE***','If it is only out by multiples of two, check cysteine distances and increase -cys cutoff'))
@@ -783,19 +793,35 @@ def run_parallel_minimise(jobs):
 #### at most 3 at a time: a residue type's minimisation barely speeds up with more threads, so the
 #### slowest type sets the floor, and beyond 3 side by side each job slows down (EptA in POPE/POPG/CARD
 #### on 10 cores: 24 s one at a time, 13 s two, 10 s three, 13 s five, 17 s seven)
+#### solvent and ions run first, one at a time with every core: water is by far the largest system (and
+#### the most memory) yet takes seconds, so running it beside the lipids only adds contention (on a
+#### memory-limited node its mdrun was killed part-way, and the build failed at the merge)
+    solvent = [job for job in jobs if job[0] in g_var.sol_residues + g_var.ion_residues]
+    jobs = [job for job in jobs if job not in solvent]
+    results = dict(_minimise_job(job) for job in solvent)
+    os.chdir(g_var.working_dir)
     workers = min(len(jobs), 3, max(1, cores // 2))
     if workers < 2 or 'fork' not in mp.get_all_start_methods():
-        return dict(_minimise_job(job) for job in jobs)
+        results.update(dict(_minimise_job(job) for job in jobs))
+        os.chdir(g_var.working_dir)
+        return results
     g_var.mdrun_ntomp = max(1, cores // workers)
     print('Minimising '+', '.join(job[0] for job in jobs)+' side by side ('+str(workers)+' at a time, '
           +str(g_var.mdrun_ntomp)+' threads each)\n')
     sys.stdout.flush()
     try:
         with mp.get_context('fork').Pool(workers, maxtasksperchild=1) as pool:
-            results = dict(pool.imap_unordered(_minimise_job, jobs))
+            results.update(dict(pool.imap_unordered(_minimise_job, jobs)))
     finally:
         g_var.mdrun_ntomp = None
         os.chdir(g_var.working_dir)
+#### a residue type left without its minimised structure (its mdrun killed or failed) is run again
+#### here, on its own with every core, before the merge needs it
+    for job in jobs:
+        if not os.path.exists(g_var.working_dir+job[0]+'/'+job[0]+'_merged.pdb'):
+            print('\n'+job[0]+': no minimised structure from the side-by-side run; minimising it again on its own\n')
+            results[job[0]] = _minimise_job(job)[1]
+            os.chdir(g_var.working_dir)
     return results
 
 def strong_minimise(residue_type, input_file, name):
