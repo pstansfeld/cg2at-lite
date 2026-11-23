@@ -15,8 +15,8 @@ ATOM     12 H11B DMPS    1       2.685  13.913  25.353  1.00  0.00      MEMB H
 ATOM     13  P   DMPS    1       2.595  15.813  27.423  0.00  0.00      MEMB P  
 ATOM     14  O13 DMPS    1       1.235  16.113  27.923  0.00  0.00      MEMB O  
 ATOM     15  O14 DMPS    1       3.705  16.613  27.983  0.00  0.00      MEMB O  
-ATOM     16  O12 DMPS    1       2.595  15.973  25.853  0.00  2.00      MEMB O  
-ATOM     17  O11 DMPS    1       2.935  14.283  27.653  0.00  1.00      MEMB O  
+ATOM     16  O12 DMPS    1       2.595  15.973  25.853  0.00  1.00      MEMB O  
+ATOM     17  O11 DMPS    1       2.935  14.283  27.653  0.00  2.00      MEMB O  
 [ GL1 ]
 ATOM     18  C1  DMPS    1       1.975  13.333  28.103  2.00  2.00      MEMB C  
 ATOM     19  HA  DMPS    1       2.065  12.423  27.463  2.00  0.00      MEMB H  
@@ -24,20 +24,20 @@ ATOM     20  HB  DMPS    1       0.925  13.693  28.013  2.00  0.00      MEMB H
 ATOM     21  C2  DMPS    1       2.255  12.923  29.573  0.00  3.00      MEMB C  
 ATOM     22  HS  DMPS    1       1.455  12.203  29.873  0.00  0.00      MEMB H  
 ATOM     23  O21 DMPS    1       2.255  14.063  30.443  0.00  0.00      MEMB O  
-ATOM     24  C21 DMPS    1       1.075  14.553  30.813  0.00  0.00      MEMB C  
+ATOM     24  C21 DMPS    1       1.075  14.553  30.813  0.00  4.00      MEMB C  
 ATOM     25  O22 DMPS    1      -0.025  14.093  30.523  0.00  0.00      MEMB O  
 [ GL2 ]
 ATOM     29  C3  DMPS    1       3.615  12.173  29.753  4.00  3.00      MEMB C  
 ATOM     30  HX  DMPS    1       4.455  12.893  29.703  4.00  0.00      MEMB H  
 ATOM     31  HY  DMPS    1       3.715  11.433  28.933  4.00  0.00      MEMB H  
 ATOM     32  O31 DMPS    1       3.585  11.493  31.013  0.00  0.00      MEMB O  
-ATOM     33  C31 DMPS    1       4.545  10.633  31.303  0.00  0.00      MEMB C  
+ATOM     33  C31 DMPS    1       4.545  10.633  31.303  0.00  5.00      MEMB C  
 ATOM     34  O32 DMPS    1       5.565  10.463  30.663  0.00  0.00      MEMB O  
 [ C1A ]
 ATOM     26  C22 DMPS    1       1.295  15.813  31.653  3.00  4.00      MEMB C  
 ATOM     27  H2R DMPS    1       0.325  16.223  31.993  3.00  0.00      MEMB H  
 ATOM     28  H2S DMPS    1       1.785  16.573  31.003  3.00  0.00      MEMB H  
-ATOM     38  C23 DMPS    1       2.215  15.533  32.863  6.00  4.00      MEMB C  
+ATOM     38  C23 DMPS    1       2.215  15.533  32.863  6.00  0.00      MEMB C  
 ATOM     39  H3R DMPS    1       2.675  16.503  33.163  6.00  0.00      MEMB H  
 ATOM     40  H3S DMPS    1       3.045  14.843  32.593  6.00  0.00      MEMB H  
 ATOM     41  C24 DMPS    1       1.475  15.003  34.103  0.00  0.00      MEMB C  
@@ -80,7 +80,7 @@ ATOM     74 H14T DMPS    1       3.485  14.563  42.633  0.00  0.00      MEMB H
 ATOM     35  C32 DMPS    1       4.175   9.833  32.573  5.00  5.00      MEMB C  
 ATOM     36  H2X DMPS    1       5.055   9.833  33.243  5.00  0.00      MEMB H  
 ATOM     37  H2Y DMPS    1       3.965   8.783  32.273  5.00  0.00      MEMB H  
-ATOM     75  C33 DMPS    1       2.955  10.383  33.353  11.0  5.00      MEMB C  
+ATOM     75  C33 DMPS    1       2.955  10.383  33.353  11.0  0.00      MEMB C  
 ATOM     76  H3X DMPS    1       3.135  11.463  33.573  11.0  0.00      MEMB H  
 ATOM     77  H3Y DMPS    1       2.035  10.313  32.733  11.0  0.00      MEMB H  
 ATOM     78  C34 DMPS    1       2.715   9.663  34.693  0.00  0.00      MEMB C  

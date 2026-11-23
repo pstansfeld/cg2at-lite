@@ -8,33 +8,33 @@ ATOM      6 H12A SDPS    1      -1.909  -0.070  -1.825  1.00  0.00      SDPS
 ATOM      7  C13 SDPS    1      -1.109  -2.010  -2.265  1.00  0.00      SDPS
 ATOM      8 O13A SDPS    1      -0.329  -1.720  -3.205  1.00  0.00      SDPS
 ATOM      9 O13B SDPS    1      -1.609  -3.160  -2.115  1.00  0.00      SDPS
-ATOM     10  C11 SDPS    1      -0.149  -0.380  -0.585  1.00  0.00      SDPS
+ATOM     10  C11 SDPS    1      -0.149  -0.380  -0.585  1.00  1.00      SDPS
 ATOM     11 H11A SDPS    1       0.571  -0.060  -1.375  1.00  0.00      SDPS
 ATOM     12 H11B SDPS    1       0.301  -1.230  -0.015  1.00  0.00      SDPS
 [ PO4 ]
 ATOM     13  P   SDPS    1       0.571   1.120   1.405  1.00  0.00      SDPS
 ATOM     14  O13 SDPS    1       0.571   0.050   2.425  1.00  0.00      SDPS
 ATOM     15  O14 SDPS    1       0.241   2.490   1.865  1.00  0.00      SDPS
-ATOM     16  O12 SDPS    1      -0.449   0.730   0.255  1.00  0.00      SDPS
-ATOM     17  O11 SDPS    1       1.961   1.090   0.655  1.00  0.00      SDPS
+ATOM     16  O12 SDPS    1      -0.449   0.730   0.255  1.00  1.00      SDPS
+ATOM     17  O11 SDPS    1       1.961   1.090   0.655  1.00  2.00      SDPS
 [ GL1 ]
-ATOM     18  C1  SDPS    1       2.661   2.280   0.295  1.00  0.00      SDPS
+ATOM     18  C1  SDPS    1       2.661   2.280   0.295  1.00  2.00      SDPS
 ATOM     19  HA  SDPS    1       3.731   2.140   0.575  1.00  0.00      SDPS
 ATOM     20  HB  SDPS    1       2.311   3.180   0.845  1.00  0.00      SDPS
-ATOM     21  C2  SDPS    1       2.611   2.520  -1.245  1.00  0.00      SDPS
+ATOM     21  C2  SDPS    1       2.611   2.520  -1.245  1.00  3.00      SDPS
 ATOM     22  HS  SDPS    1       3.151   3.470  -1.455  1.00  0.00      SDPS
 ATOM     23  O21 SDPS    1       1.261   2.620  -1.745  1.00  0.00      SDPS
-ATOM     24  C21 SDPS    1       0.581   3.710  -1.415  1.00  0.00      SDPS
+ATOM     24  C21 SDPS    1       0.581   3.710  -1.415  1.00  4.00      SDPS
 ATOM     25  O22 SDPS    1       0.951   4.600  -0.665  1.00  0.00      SDPS
 [ GL2 ]
-ATOM     26  C3  SDPS    1       3.351   1.400  -2.005  1.00  0.00      SDPS
+ATOM     26  C3  SDPS    1       3.351   1.400  -2.005  1.00  3.00      SDPS
 ATOM     27  HX  SDPS    1       2.871   0.420  -1.815  1.00  0.00      SDPS
 ATOM     28  HY  SDPS    1       4.381   1.340  -1.595  1.00  0.00      SDPS
 ATOM     29  O31 SDPS    1       3.461   1.700  -3.405  1.00  0.00      SDPS
-ATOM     30  C31 SDPS    1       2.531   1.170  -4.205  1.00  0.00      SDPS
+ATOM     30  C31 SDPS    1       2.531   1.170  -4.205  1.00  5.00      SDPS
 ATOM     31  O32 SDPS    1       1.581   0.500  -3.855  1.00  0.00      SDPS
 [ D1A ]
-ATOM     32  C22 SDPS    1      -0.749   3.740  -2.185  1.00  0.00      SDPS
+ATOM     32  C22 SDPS    1      -0.749   3.740  -2.185  1.00  4.00      SDPS
 ATOM     33  H2R SDPS    1      -1.219   4.730  -1.985  1.00  0.00      SDPS
 ATOM     34  H2S SDPS    1      -1.419   2.950  -1.785  1.00  0.00      SDPS
 ATOM     35  C23 SDPS    1      -0.509   3.540  -3.695  1.00  0.00      SDPS
@@ -44,42 +44,42 @@ ATOM     38  C24 SDPS    1      -1.659   4.050  -4.535  1.00  0.00      SDPS
 ATOM     39  H4R SDPS    1      -1.829   5.140  -4.455  1.00  0.00      SDPS
 ATOM     40  C25 SDPS    1      -2.479   3.350  -5.345  1.00  0.00      SDPS
 ATOM     41  H5R SDPS    1      -3.279   3.910  -5.865  1.00  0.00      SDPS
-ATOM     42  C26 SDPS    1      -2.459   1.870  -5.625  1.00  0.00      SDPS
+ATOM     42  C26 SDPS    1      -2.459   1.870  -5.625  1.00  6.00      SDPS
 ATOM     43  H6R SDPS    1      -3.089   1.360  -4.855  1.00  0.00      SDPS
 ATOM     44  H6S SDPS    1      -1.429   1.460  -5.485  1.00  0.00      SDPS
 [ D2A ]
-ATOM     45  C27 SDPS    1      -3.009   1.530  -6.985  1.00  0.00      SDPS
+ATOM     45  C27 SDPS    1      -3.009   1.530  -6.985  1.00  6.00      SDPS
 ATOM     46  H7R SDPS    1      -3.949   2.050  -7.235  1.00  0.00      SDPS
 ATOM     47  C28 SDPS    1      -2.519   0.670  -7.905  1.00  0.00      SDPS
 ATOM     48  H8R SDPS    1      -3.069   0.560  -8.845  1.00  0.00      SDPS
 ATOM     49  C29 SDPS    1      -1.279  -0.190  -7.805  1.00  0.00      SDPS
 ATOM     50  H9R SDPS    1      -0.669   0.090  -6.915  1.00  0.00      SDPS
 ATOM     51  H9S SDPS    1      -0.629   0.020  -8.685  1.00  0.00      SDPS
-ATOM     52 C210 SDPS    1      -1.619  -1.660  -7.705  1.00  0.00      SDPS
+ATOM     52 C210 SDPS    1      -1.619  -1.660  -7.705  1.00  7.00      SDPS
 ATOM     53 H10R SDPS    1      -2.369  -1.900  -6.945  1.00  0.00      SDPS
 [ D3A ]
-ATOM     54 C211 SDPS    1      -1.109  -2.660  -8.445  1.00  0.00      SDPS
+ATOM     54 C211 SDPS    1      -1.109  -2.660  -8.445  1.00  7.00      SDPS
 ATOM     55 H11R SDPS    1      -1.469  -3.680  -8.245  1.00  0.00      SDPS
 ATOM     56 C212 SDPS    1      -0.059  -2.570  -9.525  1.00  0.00      SDPS
 ATOM     57 H12R SDPS    1       0.431  -3.560  -9.615  1.00  0.00      SDPS
 ATOM     58 H12S SDPS    1       0.741  -1.870  -9.195  1.00  0.00      SDPS
 ATOM     59 C213 SDPS    1      -0.609  -2.180 -10.885  1.00  0.00      SDPS
 ATOM     60 H13R SDPS    1      -1.439  -2.800 -11.245  1.00  0.00      SDPS
-ATOM     61 C214 SDPS    1      -0.149  -1.200 -11.675  1.00  0.00      SDPS
+ATOM     61 C214 SDPS    1      -0.149  -1.200 -11.675  1.00  8.00      SDPS
 ATOM     62 H14R SDPS    1      -0.639  -1.040 -12.645  1.00  0.00      SDPS
 [ D4A ]
-ATOM     63 C215 SDPS    1       0.981  -0.250 -11.375  1.00  0.00      SDPS
+ATOM     63 C215 SDPS    1       0.981  -0.250 -11.375  1.00  8.00      SDPS
 ATOM     64 H15R SDPS    1       1.031  -0.020 -10.285  1.00  0.00      SDPS
 ATOM     65 H15S SDPS    1       0.751   0.720 -11.855  1.00  0.00      SDPS
 ATOM     66 C216 SDPS    1       2.341  -0.740 -11.815  1.00  0.00      SDPS
 ATOM     67 H16R SDPS    1       2.851  -1.410 -11.105  1.00  0.00      SDPS
 ATOM     68 C217 SDPS    1       2.971  -0.430 -12.965  1.00  0.00      SDPS
 ATOM     69 H17R SDPS    1       3.961  -0.860 -13.155  1.00  0.00      SDPS
-ATOM     70 C218 SDPS    1       2.451   0.470 -14.075  1.00  0.00      SDPS
+ATOM     70 C218 SDPS    1       2.451   0.470 -14.075  1.00  9.00      SDPS
 ATOM     71 H18R SDPS    1       3.321   0.890 -14.615  1.00  0.00      SDPS
 ATOM     72 H18S SDPS    1       1.931   1.350 -13.635  1.00  0.00      SDPS
 [ D5A ]
-ATOM     73 C219 SDPS    1       1.521  -0.210 -15.045  1.00  0.00      SDPS
+ATOM     73 C219 SDPS    1       1.521  -0.210 -15.045  1.00  9.00      SDPS
 ATOM     74 H19R SDPS    1       0.451  -0.020 -14.885  1.00  0.00      SDPS
 ATOM     75 C220 SDPS    1       1.881  -1.000 -16.075  1.00  0.00      SDPS
 ATOM     76 H20R SDPS    1       1.091  -1.430 -16.715  1.00  0.00      SDPS
@@ -91,7 +91,7 @@ ATOM     81 H22R SDPS    1       3.831   0.500 -17.415  1.00  0.00      SDPS
 ATOM     82 H22S SDPS    1       3.181  -0.750 -18.545  1.00  0.00      SDPS
 ATOM     83 H22T SDPS    1       4.851  -0.900 -17.895  1.00  0.00      SDPS
 [ C1B ]
-ATOM     84  C32 SDPS    1       2.841   1.520  -5.665  1.00  0.00      SDPS
+ATOM     84  C32 SDPS    1       2.841   1.520  -5.665  1.00  5.00      SDPS
 ATOM     85  H2X SDPS    1       3.001   0.570  -6.225  1.00  0.00      SDPS
 ATOM     86  H2Y SDPS    1       3.761   2.140  -5.745  1.00  0.00      SDPS
 ATOM     87  C33 SDPS    1       1.661   2.280  -6.295  1.00  0.00      SDPS
@@ -103,11 +103,11 @@ ATOM     92  H4Y SDPS    1       2.761   2.830  -8.075  1.00  0.00      SDPS
 ATOM     93  C35 SDPS    1       0.691   3.300  -8.445  1.00  0.00      SDPS
 ATOM     94  H5X SDPS    1       0.811   4.330  -8.045  1.00  0.00      SDPS
 ATOM     95  H5Y SDPS    1      -0.319   2.940  -8.145  1.00  0.00      SDPS
-ATOM     96  C36 SDPS    1       0.761   3.350  -9.985  1.00  0.00      SDPS
+ATOM     96  C36 SDPS    1       0.761   3.350  -9.985  1.00 10.00      SDPS
 ATOM     97  H6X SDPS    1       0.451   2.360 -10.375  1.00  0.00      SDPS
 ATOM     98  H6Y SDPS    1       1.821   3.530 -10.285  1.00  0.00      SDPS
 [ C2B ]
-ATOM     99  C37 SDPS    1      -0.109   4.450 -10.605  1.00  0.00      SDPS
+ATOM     99  C37 SDPS    1      -0.109   4.450 -10.605  1.00 10.00      SDPS
 ATOM    100  H7X SDPS    1       0.211   5.430 -10.165  1.00  0.00      SDPS
 ATOM    101  H7Y SDPS    1      -1.169   4.290 -10.315  1.00  0.00      SDPS
 ATOM    102  C38 SDPS    1       0.011   4.580 -12.135  1.00  0.00      SDPS
@@ -116,11 +116,11 @@ ATOM    104  H8Y SDPS    1      -0.599   5.450 -12.455  1.00  0.00      SDPS
 ATOM    105  C39 SDPS    1      -0.449   3.360 -12.955  1.00  0.00      SDPS
 ATOM    106  H9X SDPS    1       0.241   2.510 -12.745  1.00  0.00      SDPS
 ATOM    107  H9Y SDPS    1      -0.349   3.600 -14.035  1.00  0.00      SDPS
-ATOM    108 C310 SDPS    1      -1.889   2.910 -12.675  1.00  0.00      SDPS
+ATOM    108 C310 SDPS    1      -1.889   2.910 -12.675  1.00 11.00      SDPS
 ATOM    109 H10X SDPS    1      -2.599   3.730 -12.925  1.00  0.00      SDPS
 ATOM    110 H10Y SDPS    1      -1.979   2.710 -11.585  1.00  0.00      SDPS
 [ C3B ]
-ATOM    111 C311 SDPS    1      -2.329   1.610 -13.395  1.00  0.00      SDPS
+ATOM    111 C311 SDPS    1      -2.329   1.610 -13.395  1.00 11.00      SDPS
 ATOM    112 H11X SDPS    1      -3.139   1.180 -12.765  1.00  0.00      SDPS
 ATOM    113 H11Y SDPS    1      -1.499   0.880 -13.405  1.00  0.00      SDPS
 ATOM    114 C312 SDPS    1      -2.919   1.790 -14.805  1.00  0.00      SDPS
@@ -129,11 +129,11 @@ ATOM    116 H12Y SDPS    1      -3.669   0.990 -14.955  1.00  0.00      SDPS
 ATOM    117 C313 SDPS    1      -1.909   1.680 -15.955  1.00  0.00      SDPS
 ATOM    118 H13X SDPS    1      -1.419   0.680 -15.895  1.00  0.00      SDPS
 ATOM    119 H13Y SDPS    1      -1.119   2.460 -15.845  1.00  0.00      SDPS
-ATOM    120 C314 SDPS    1      -2.569   1.830 -17.335  1.00  0.00      SDPS
+ATOM    120 C314 SDPS    1      -2.569   1.830 -17.335  1.00 12.00      SDPS
 ATOM    121 H14X SDPS    1      -3.049   2.840 -17.375  1.00  0.00      SDPS
 ATOM    122 H14Y SDPS    1      -3.369   1.070 -17.435  1.00  0.00      SDPS
 [ C4B ]
-ATOM    123 C315 SDPS    1      -1.619   1.720 -18.535  1.00  0.00      SDPS
+ATOM    123 C315 SDPS    1      -1.619   1.720 -18.535  1.00 12.00      SDPS
 ATOM    124 H15X SDPS    1      -0.789   2.440 -18.425  1.00  0.00      SDPS
 ATOM    125 H15Y SDPS    1      -2.189   1.990 -19.445  1.00  0.00      SDPS
 ATOM    126 C316 SDPS    1      -1.039   0.310 -18.745  1.00  0.00      SDPS

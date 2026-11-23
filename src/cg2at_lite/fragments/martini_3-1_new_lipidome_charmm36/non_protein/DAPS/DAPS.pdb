@@ -8,74 +8,74 @@ ATOM      6 H12A DAPS    1       0.497   1.679   1.401  1.00  0.00      DAPS
 ATOM      7  C13 DAPS    1      -1.173   2.739   0.531  1.00  0.00      DAPS
 ATOM      8 O13A DAPS    1      -0.553   3.609  -0.149  1.00  0.00      DAPS
 ATOM      9 O13B DAPS    1      -2.353   2.909   0.941  1.00  0.00      DAPS
-ATOM     10  C11 DAPS    1      -0.063   0.729  -0.499  1.00  0.00      DAPS
+ATOM     10  C11 DAPS    1      -0.063   0.729  -0.499  1.00  1.00      DAPS
 ATOM     11 H11A DAPS    1       0.547   1.419  -1.119  1.00  0.00      DAPS
 ATOM     12 H11B DAPS    1      -1.003   0.539  -1.059  1.00  0.00      DAPS
 [ PO4 ]
 ATOM     13  P   DAPS    1       0.167  -1.861  -0.709  1.00  0.00      DAPS
 ATOM     14  O13 DAPS    1      -1.213  -2.031  -0.199  1.00  0.00      DAPS
 ATOM     15  O14 DAPS    1       1.157  -2.901  -0.339  1.00  0.00      DAPS
-ATOM     16  O12 DAPS    1       0.717  -0.441  -0.269  1.00  0.00      DAPS
-ATOM     17  O11 DAPS    1       0.107  -1.741  -2.289  1.00  0.00      DAPS
+ATOM     16  O12 DAPS    1       0.717  -0.441  -0.269  1.00  1.00      DAPS
+ATOM     17  O11 DAPS    1       0.107  -1.741  -2.289  1.00  2.00      DAPS
 [ GL1 ]
-ATOM     18  C1  DAPS    1       1.297  -1.381  -2.989  1.00  0.00      DAPS
+ATOM     18  C1  DAPS    1       1.297  -1.381  -2.989  1.00  2.00      DAPS
 ATOM     19  HA  DAPS    1       2.117  -2.101  -2.779  1.00  0.00      DAPS
 ATOM     20  HB  DAPS    1       1.637  -0.371  -2.669  1.00  0.00      DAPS
-ATOM     21  C2  DAPS    1       1.027  -1.371  -4.519  1.00  0.00      DAPS
+ATOM     21  C2  DAPS    1       1.027  -1.371  -4.519  1.00  3.00      DAPS
 ATOM     22  HS  DAPS    1       1.847  -0.801  -5.019  1.00  0.00      DAPS
 ATOM     23  O21 DAPS    1      -0.233  -0.781  -4.869  1.00  0.00      DAPS
-ATOM     24  C21 DAPS    1      -0.493   0.469  -4.529  1.00  0.00      DAPS
+ATOM     24  C21 DAPS    1      -0.493   0.469  -4.529  1.00  4.00      DAPS
 ATOM     25  O22 DAPS    1       0.217   1.219  -3.879  1.00  0.00      DAPS
 [ GL2 ]
-ATOM     26  C3  DAPS    1       1.037  -2.811  -5.089  1.00  0.00      DAPS
+ATOM     26  C3  DAPS    1       1.037  -2.811  -5.089  1.00  3.00      DAPS
 ATOM     27  HX  DAPS    1       0.287  -3.401  -4.509  1.00  0.00      DAPS
 ATOM     28  HY  DAPS    1       2.047  -3.261  -4.929  1.00  0.00      DAPS
 ATOM     29  O31 DAPS    1       0.727  -2.811  -6.499  1.00  0.00      DAPS
-ATOM     30  C31 DAPS    1       0.357  -4.001  -6.989  1.00  0.00      DAPS
+ATOM     30  C31 DAPS    1       0.357  -4.001  -6.989  1.00  5.00      DAPS
 ATOM     31  O32 DAPS    1       0.287  -5.031  -6.349  1.00  0.00      DAPS
 [ C1A ]
-ATOM     32  C22 DAPS    1      -1.823   0.849  -5.169  1.00  0.00      DAPS
+ATOM     32  C22 DAPS    1      -1.823   0.849  -5.169  1.00  4.00      DAPS
 ATOM     33  H2R DAPS    1      -2.593   0.069  -4.949  1.00  0.00      DAPS
 ATOM     34  H2S DAPS    1      -1.653   0.869  -6.269  1.00  0.00      DAPS
 ATOM     35  C23 DAPS    1      -2.333   2.219  -4.709  1.00  0.00      DAPS
 ATOM     36  H3R DAPS    1      -1.503   2.969  -4.689  1.00  0.00      DAPS
 ATOM     37  H3S DAPS    1      -2.713   2.119  -3.669  1.00  0.00      DAPS
-ATOM     38  C24 DAPS    1      -3.473   2.759  -5.599  1.00  0.00      DAPS
+ATOM     38  C24 DAPS    1      -3.473   2.759  -5.599  1.00  6.00      DAPS
 ATOM     39  H4R DAPS    1      -4.023   3.539  -5.009  1.00  0.00      DAPS
 ATOM     40  H4S DAPS    1      -4.193   1.939  -5.779  1.00  0.00      DAPS
 [ D2A ]
-ATOM     41  C25 DAPS    1      -3.003   3.389  -6.889  1.00  0.00      DAPS
+ATOM     41  C25 DAPS    1      -3.003   3.389  -6.889  1.00  6.00      DAPS
 ATOM     42  H5R DAPS    1      -2.673   4.429  -6.789  1.00  0.00      DAPS
 ATOM     43  C26 DAPS    1      -2.953   2.819  -8.109  1.00  0.00      DAPS
 ATOM     44  H6R DAPS    1      -2.573   3.429  -8.949  1.00  0.00      DAPS
 ATOM     45  C27 DAPS    1      -3.333   1.409  -8.479  1.00  0.00      DAPS
 ATOM     46  H7R DAPS    1      -3.393   0.759  -7.579  1.00  0.00      DAPS
 ATOM     47  H7S DAPS    1      -2.513   0.969  -9.099  1.00  0.00      DAPS
-ATOM     48  C28 DAPS    1      -4.653   1.349  -9.189  1.00  0.00      DAPS
+ATOM     48  C28 DAPS    1      -4.653   1.349  -9.189  1.00  7.00      DAPS
 ATOM     49  H8R DAPS    1      -5.533   1.379  -8.529  1.00  0.00      DAPS
 [ D3A ]
-ATOM     50  C29 DAPS    1      -4.873   1.249 -10.519  1.00  0.00      DAPS
+ATOM     50  C29 DAPS    1      -4.873   1.249 -10.519  1.00  7.00      DAPS
 ATOM     51  H9R DAPS    1      -5.913   1.209 -10.869  1.00  0.00      DAPS
 ATOM     52 C210 DAPS    1      -3.833   1.189 -11.609  1.00  0.00      DAPS
 ATOM     53 H10R DAPS    1      -3.943   0.209 -12.129  1.00  0.00      DAPS
 ATOM     54 H10S DAPS    1      -2.813   1.189 -11.189  1.00  0.00      DAPS
 ATOM     55 C211 DAPS    1      -3.943   2.329 -12.589  1.00  0.00      DAPS
 ATOM     56 H11R DAPS    1      -4.033   3.329 -12.139  1.00  0.00      DAPS
-ATOM     57 C212 DAPS    1      -3.913   2.229 -13.939  1.00  0.00      DAPS
+ATOM     57 C212 DAPS    1      -3.913   2.229 -13.939  1.00  8.00      DAPS
 ATOM     58 H12R DAPS    1      -4.003   3.149 -14.529  1.00  0.00      DAPS
 [ D4A ]
-ATOM     59 C213 DAPS    1      -3.783   0.959 -14.749  1.00  0.00      DAPS
+ATOM     59 C213 DAPS    1      -3.783   0.959 -14.749  1.00  8.00      DAPS
 ATOM     60 H13R DAPS    1      -4.043   1.199 -15.809  1.00  0.00      DAPS
 ATOM     61 H13S DAPS    1      -4.573   0.249 -14.419  1.00  0.00      DAPS
 ATOM     62 C214 DAPS    1      -2.453   0.249 -14.659  1.00  0.00      DAPS
 ATOM     63 H14R DAPS    1      -2.093   0.059 -13.629  1.00  0.00      DAPS
 ATOM     64 C215 DAPS    1      -1.693  -0.181 -15.689  1.00  0.00      DAPS
 ATOM     65 H15R DAPS    1      -0.743  -0.691 -15.469  1.00  0.00      DAPS
-ATOM     66 C216 DAPS    1      -2.013  -0.021 -17.149  1.00  0.00      DAPS
+ATOM     66 C216 DAPS    1      -2.013  -0.021 -17.149  1.00  9.00      DAPS
 ATOM     67 H16R DAPS    1      -1.083  -0.061 -17.749  1.00  0.00      DAPS
 ATOM     68 H16S DAPS    1      -2.463   0.989 -17.339  1.00  0.00      DAPS
 [ C5A ]
-ATOM     69 C217 DAPS    1      -3.003  -1.081 -17.689  1.00  0.00      DAPS
+ATOM     69 C217 DAPS    1      -3.003  -1.081 -17.689  1.00  9.00      DAPS
 ATOM     70 H17R DAPS    1      -3.883  -1.151 -17.019  1.00  0.00      DAPS
 ATOM     71 H17S DAPS    1      -2.493  -2.071 -17.699  1.00  0.00      DAPS
 ATOM     72 C218 DAPS    1      -3.503  -0.741 -19.099  1.00  0.00      DAPS
@@ -89,48 +89,48 @@ ATOM     79 H20R DAPS    1      -4.483  -3.721 -20.729  1.00  0.00      DAPS
 ATOM     80 H20S DAPS    1      -3.133  -3.541 -19.559  1.00  0.00      DAPS
 ATOM     81 H20T DAPS    1      -3.073  -2.681 -21.149  1.00  0.00      DAPS
 [ C1B ]
-ATOM     82  C32 DAPS    1       0.027  -3.871  -8.479  1.00  0.00      DAPS
+ATOM     82  C32 DAPS    1       0.027  -3.871  -8.479  1.00  5.00      DAPS
 ATOM     83  H2X DAPS    1      -0.383  -2.861  -8.699  1.00  0.00      DAPS
 ATOM     84  H2Y DAPS    1      -0.773  -4.611  -8.709  1.00  0.00      DAPS
 ATOM     85  C33 DAPS    1       1.247  -4.171  -9.369  1.00  0.00      DAPS
 ATOM     86  H3X DAPS    1       0.927  -4.891 -10.149  1.00  0.00      DAPS
 ATOM     87  H3Y DAPS    1       2.057  -4.651  -8.789  1.00  0.00      DAPS
-ATOM     88  C34 DAPS    1       1.797  -2.921 -10.099  1.00  0.00      DAPS
+ATOM     88  C34 DAPS    1       1.797  -2.921 -10.099  1.00 10.00      DAPS
 ATOM     89  H4X DAPS    1       2.047  -2.161  -9.329  1.00  0.00      DAPS
 ATOM     90  H4Y DAPS    1       0.967  -2.491 -10.709  1.00  0.00      DAPS
 [ D2B ]
-ATOM     91  C35 DAPS    1       3.017  -3.211 -10.939  1.00  0.00      DAPS
+ATOM     91  C35 DAPS    1       3.017  -3.211 -10.939  1.00 10.00      DAPS
 ATOM     92  H5X DAPS    1       3.917  -3.471 -10.369  1.00  0.00      DAPS
 ATOM     93  C36 DAPS    1       3.097  -3.181 -12.289  1.00  0.00      DAPS
 ATOM     94  H6X DAPS    1       4.067  -3.421 -12.749  1.00  0.00      DAPS
 ATOM     95  C37 DAPS    1       1.977  -2.851 -13.249  1.00  0.00      DAPS
 ATOM     96  H7X DAPS    1       1.507  -1.891 -12.949  1.00  0.00      DAPS
 ATOM     97  H7Y DAPS    1       1.177  -3.611 -13.159  1.00  0.00      DAPS
-ATOM     98  C38 DAPS    1       2.417  -2.771 -14.689  1.00  0.00      DAPS
+ATOM     98  C38 DAPS    1       2.417  -2.771 -14.689  1.00 11.00      DAPS
 ATOM     99  H8X DAPS    1       2.267  -3.701 -15.269  1.00  0.00      DAPS
 [ D3B ]
-ATOM    100  C39 DAPS    1       2.937  -1.701 -15.329  1.00  0.00      DAPS
+ATOM    100  C39 DAPS    1       2.937  -1.701 -15.329  1.00 11.00      DAPS
 ATOM    101  H9X DAPS    1       3.187  -1.801 -16.389  1.00  0.00      DAPS
 ATOM    102 C310 DAPS    1       3.217  -0.351 -14.719  1.00  0.00      DAPS
 ATOM    103 H10X DAPS    1       3.317  -0.421 -13.609  1.00  0.00      DAPS
 ATOM    104 H10Y DAPS    1       2.327   0.299 -14.899  1.00  0.00      DAPS
 ATOM    105 C311 DAPS    1       4.467   0.309 -15.269  1.00  0.00      DAPS
 ATOM    106 H11X DAPS    1       5.407  -0.111 -14.889  1.00  0.00      DAPS
-ATOM    107 C312 DAPS    1       4.517   1.329 -16.149  1.00  0.00      DAPS
+ATOM    107 C312 DAPS    1       4.517   1.329 -16.149  1.00 12.00      DAPS
 ATOM    108 H12X DAPS    1       5.507   1.699 -16.449  1.00  0.00      DAPS
 [ D4B ]
-ATOM    109 C313 DAPS    1       3.327   2.019 -16.769  1.00  0.00      DAPS
+ATOM    109 C313 DAPS    1       3.327   2.019 -16.769  1.00 12.00      DAPS
 ATOM    110 H13X DAPS    1       2.867   2.679 -16.009  1.00  0.00      DAPS
 ATOM    111 H13Y DAPS    1       2.547   1.269 -17.029  1.00  0.00      DAPS
 ATOM    112 C314 DAPS    1       3.687   2.869 -17.969  1.00  0.00      DAPS
 ATOM    113 H14X DAPS    1       4.527   3.559 -17.809  1.00  0.00      DAPS
 ATOM    114 C315 DAPS    1       3.087   2.879 -19.179  1.00  0.00      DAPS
 ATOM    115 H15X DAPS    1       3.477   3.559 -19.949  1.00  0.00      DAPS
-ATOM    116 C316 DAPS    1       1.907   2.049 -19.629  1.00  0.00      DAPS
+ATOM    116 C316 DAPS    1       1.907   2.049 -19.629  1.00 13.00      DAPS
 ATOM    117 H16X DAPS    1       1.337   1.629 -18.769  1.00  0.00      DAPS
 ATOM    118 H16Y DAPS    1       2.287   1.179 -20.219  1.00  0.00      DAPS
 [ C5B ]
-ATOM    119 C317 DAPS    1       0.907   2.799 -20.529  1.00  0.00      DAPS
+ATOM    119 C317 DAPS    1       0.907   2.799 -20.529  1.00 13.00      DAPS
 ATOM    120 H17X DAPS    1       0.187   2.049 -20.929  1.00  0.00      DAPS
 ATOM    121 H17Y DAPS    1       1.447   3.239 -21.399  1.00  0.00      DAPS
 ATOM    122 C318 DAPS    1       0.107   3.909 -19.809  1.00  0.00      DAPS

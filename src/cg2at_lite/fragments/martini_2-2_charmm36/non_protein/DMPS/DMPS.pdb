@@ -15,8 +15,8 @@ ATOM     12 H11B DMPS    1       2.685  13.913  25.353  1.00  0.00      MEMB H
 ATOM     13  P   DMPS    1       2.595  15.813  27.423  0.00  0.00      MEMB P  
 ATOM     14  O13 DMPS    1       1.235  16.113  27.923  0.00  0.00      MEMB O  
 ATOM     15  O14 DMPS    1       3.705  16.613  27.983  0.00  0.00      MEMB O  
-ATOM     16  O12 DMPS    1       2.595  15.973  25.853  0.00  2.00      MEMB O  
-ATOM     17  O11 DMPS    1       2.935  14.283  27.653  0.00  1.00      MEMB O  
+ATOM     16  O12 DMPS    1       2.595  15.973  25.853  0.00  1.00      MEMB O  
+ATOM     17  O11 DMPS    1       2.935  14.283  27.653  0.00  2.00      MEMB O  
 [ GL1 ]
 ATOM     18  C1  DMPS    1       1.975  13.333  28.103  2.00  2.00      MEMB C  
 ATOM     19  HA  DMPS    1       2.065  12.423  27.463  2.00  0.00      MEMB H  

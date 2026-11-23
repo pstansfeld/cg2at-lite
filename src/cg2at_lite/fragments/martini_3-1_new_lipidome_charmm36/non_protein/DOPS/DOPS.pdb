@@ -8,7 +8,7 @@ ATOM      6 H12A DOPS    1       5.958  10.006  63.252  1.00  0.00
 ATOM      7  C13 DOPS    1       5.518   8.246  64.372  1.00  0.00     
 ATOM      8 O13A DOPS    1       6.128   7.706  65.332  1.00  0.00     
 ATOM      9 O13B DOPS    1       4.258   8.226  64.272  1.00  0.00     
-ATOM     10  C11 DOPS    1       5.978   8.316  61.892  1.00  0.00     
+ATOM     10  C11 DOPS    1       5.978   8.316  61.892  1.00  1.00     
 ATOM     11 H11A DOPS    1       4.878   8.266  61.752  1.00  0.00     
 ATOM     12 H11B DOPS    1       6.358   7.266  61.902  1.00  0.00    
 [ PO4 ]
@@ -24,20 +24,20 @@ ATOM     20  HB  DOPS    1       4.818   8.176  59.172  2.00  0.00      MEMB
 ATOM     21  C2  DOPS    1       4.768   6.216  58.242  0.00  3.00      MEMB  
 ATOM     22  HS  DOPS    1       4.608   5.726  59.232  0.00  0.00      MEMB  
 ATOM     23  O21 DOPS    1       5.628   5.406  57.422  0.00  0.00      MEMB  
-ATOM     24  C21 DOPS    1       5.388   4.096  57.452  0.00  0.00      MEMB  
+ATOM     24  C21 DOPS    1       5.388   4.096  57.452  0.00  4.00      MEMB  
 ATOM     25  O22 DOPS    1       4.488   3.546  58.062  0.00  0.00      MEMB  
 [ GL2 ]
 ATOM     29  C3  DOPS    1       3.378   6.436  57.592  4.00  3.00      MEMB  
 ATOM     30  HX  DOPS    1       2.778   7.066  58.292  4.00  0.00      MEMB  
 ATOM     31  HY  DOPS    1       2.868   5.466  57.462  4.00  0.00      MEMB  
 ATOM     32  O31 DOPS    1       3.538   7.086  56.322  0.00  0.00      MEMB  
-ATOM     33  C31 DOPS    1       2.398   7.496  55.762  0.00  0.00      MEMB  
+ATOM     33  C31 DOPS    1       2.398   7.496  55.762  0.00  5.00      MEMB  
 ATOM     34  O32 DOPS    1       1.288   7.416  56.262  0.00  0.00      MEMB  
 [ C1A ]
 ATOM     26  C22 DOPS    1       6.438   3.326  56.642  3.00  4.00      MEMB  
 ATOM     27  H2R DOPS    1       5.918   2.636  55.942  3.00  0.00      MEMB  
 ATOM     28  H2S DOPS    1       7.038   2.716  57.342  3.00  0.00      MEMB  
-ATOM     38  C23 DOPS    1       7.388   4.236  55.842  6.00  4.00      MEMB  
+ATOM     38  C23 DOPS    1       7.388   4.236  55.842  6.00  0.00      MEMB  
 ATOM     39  H3R DOPS    1       7.918   4.936  56.532  6.00  0.00      MEMB  
 ATOM     40  H3S DOPS    1       6.798   4.856  55.122  6.00  0.00      MEMB  
 ATOM     41  C24 DOPS    1       8.448   3.436  55.072  0.00  0.00      MEMB  
@@ -46,25 +46,25 @@ ATOM     43  H4S DOPS    1       9.018   2.836  55.812  0.00  0.00      MEMB
 ATOM     44  C25 DOPS    1       9.448   4.316  54.302  0.00  0.00      MEMB  
 ATOM     45  H5R DOPS    1      10.338   3.706  54.042  0.00  0.00      MEMB  
 ATOM     46  H5S DOPS    1       9.798   5.126  54.992  0.00  0.00      MEMB  
-ATOM     47  C26 DOPS    1       8.908   4.956  53.012  0.00  0.00      MEMB  
+ATOM     47  C26 DOPS    1       8.908   4.956  53.012  0.00  6.00      MEMB  
 ATOM     48  H6R DOPS    1       9.638   5.736  52.692  0.00  0.00      MEMB  
 ATOM     49  H6S DOPS    1       7.938   5.456  53.222  0.00  0.00      MEMB  
 [ D2A ]
 ATOM     50  C27 DOPS    1       8.758   3.956  51.852  8.00  6.00      MEMB  
 ATOM     51  H7R DOPS    1       7.938   3.246  52.092  8.00  0.00      MEMB  
 ATOM     52  H7S DOPS    1       9.698   3.376  51.762  8.00  0.00      MEMB  
-ATOM     53  C28 DOPS    1       8.488   4.626  50.492  9.00  6.00      MEMB  
+ATOM     53  C28 DOPS    1       8.488   4.626  50.492  9.00  0.00      MEMB  
 ATOM     54  H8R DOPS    1       8.438   3.826  49.722  9.00  0.00      MEMB  
 ATOM     55  H8S DOPS    1       9.378   5.256  50.242  9.00  0.00      MEMB  
 ATOM     56  C29 DOPS    1       7.208   5.426  50.472  0.00  0.00      MEMB  
 ATOM     57  H9R DOPS    1       6.308   4.826  50.672  0.00  0.00      MEMB  
-ATOM     58 C210 DOPS    1       7.068   6.746  50.262  0.00  0.00      MEMB  
+ATOM     58 C210 DOPS    1       7.068   6.746  50.262  0.00  7.00      MEMB  
 ATOM     59 H10R DOPS    1       6.048   7.166  50.272  0.00  0.00      MEMB  
 [ C3A ]
 ATOM     60 C211 DOPS    1       8.168   7.746  49.992  10.0  7.00      MEMB  
 ATOM     61 H11R DOPS    1       9.118   7.416  50.462  10.0  0.00      MEMB  
 ATOM     62 H11S DOPS    1       7.908   8.726  50.452  10.0  0.00      MEMB  
-ATOM     63 C212 DOPS    1       8.428   7.956  48.492  11.0  7.00      MEMB  
+ATOM     63 C212 DOPS    1       8.428   7.956  48.492  11.0  0.00      MEMB  
 ATOM     64 H12R DOPS    1       8.638   6.976  48.012  11.0  0.00      MEMB  
 ATOM     65 H12S DOPS    1       9.338   8.586  48.382  11.0  0.00      MEMB  
 ATOM     66 C213 DOPS    1       7.278   8.656  47.742  0.00  0.00      MEMB  
@@ -91,7 +91,7 @@ ATOM     84 H18T DOPS    1       4.868   4.686  44.352  0.00  0.00      MEMB
 ATOM     35  C32 DOPS    1       2.708   8.026  54.362  5.00  5.00      MEMB  
 ATOM     36  H2X DOPS    1       2.208   9.006  54.242  5.00  0.00      MEMB  
 ATOM     37  H2Y DOPS    1       3.798   8.166  54.222  5.00  0.00      MEMB  
-ATOM     85  C33 DOPS    1       2.158   7.036  53.322  14.0  5.00      MEMB  
+ATOM     85  C33 DOPS    1       2.158   7.036  53.322  14.0  0.00      MEMB  
 ATOM     86  H3X DOPS    1       2.348   7.446  52.302  14.0  0.00      MEMB  
 ATOM     87  H3Y DOPS    1       1.058   6.956  53.442  14.0  0.00      MEMB  
 ATOM     88  C34 DOPS    1       2.748   5.616  53.392  0.00  0.00      MEMB  
@@ -100,35 +100,35 @@ ATOM     90  H4Y DOPS    1       2.618   5.196  54.412  0.00  0.00      MEMB
 ATOM     91  C35 DOPS    1       4.238   5.496  53.002  0.00  0.00      MEMB  
 ATOM     92  H5X DOPS    1       4.848   6.176  53.632  0.00  0.00      MEMB  
 ATOM     93  H5Y DOPS    1       4.348   5.836  51.942  0.00  0.00      MEMB  
-ATOM     94  C36 DOPS    1       4.798   4.066  53.122  0.00  0.00      MEMB  
+ATOM     94  C36 DOPS    1       4.798   4.066  53.122  0.00  9.00      MEMB  
 ATOM     95  H6X DOPS    1       5.818   4.066  52.682  0.00  0.00      MEMB  
 ATOM     96  H6Y DOPS    1       4.898   3.816  54.202  0.00  0.00      MEMB  
 [ D2B ]
 ATOM     97  C37 DOPS    1       3.928   2.986  52.462  15.0  9.00      MEMB  
 ATOM     98  H7X DOPS    1       3.088   2.746  53.152  15.0  0.00      MEMB  
 ATOM     99  H7Y DOPS    1       3.478   3.396  51.542  15.0  0.00      MEMB  
-ATOM    100  C38 DOPS    1       4.668   1.666  52.122  16.0  9.00      MEMB  
+ATOM    100  C38 DOPS    1       4.668   1.666  52.122  16.0  0.00      MEMB  
 ATOM    101  H8X DOPS    1       3.898   0.926  51.802  16.0  0.00      MEMB  
 ATOM    102  H8Y DOPS    1       5.108   1.286  53.072  16.0  0.00      MEMB  
 ATOM    103  C39 DOPS    1       5.748   1.756  51.072  0.00  0.00      MEMB  
 ATOM    104  H9X DOPS    1       6.758   1.476  51.432  0.00  0.00      MEMB  
-ATOM    105 C310 DOPS    1       5.618   2.136  49.782  0.00  0.00      MEMB  
+ATOM    105 C310 DOPS    1       5.618   2.136  49.782  0.00 10.00      MEMB  
 ATOM    106 H10X DOPS    1       6.518   2.156  49.152  0.00  0.00      MEMB  
 [ C3B ]
-ATOM    107 C311 DOPS    1       4.348   2.546  49.082  17.0  10.0      MEMB  
+ATOM    107 C311 DOPS    1       4.348   2.546  49.082  17.0 10.00      MEMB  
 ATOM    108 H11X DOPS    1       3.448   2.176  49.642  17.0  0.00      MEMB  
 ATOM    109 H11Y DOPS    1       4.298   2.086  48.072  17.0  0.00      MEMB  
-ATOM    110 C312 DOPS    1       4.218   4.076  48.932  18.0  10.0      MEMB  
+ATOM    110 C312 DOPS    1       4.218   4.076  48.932  18.0  0.00      MEMB  
 ATOM    111 H12X DOPS    1       4.978   4.456  48.212  18.0  0.00      MEMB  
 ATOM    112 H12Y DOPS    1       4.408   4.556  49.922  18.0  0.00      MEMB  
 ATOM    113 C313 DOPS    1       2.818   4.516  48.512  0.00  0.00      MEMB  
 ATOM    114 H13X DOPS    1       2.598   4.166  47.482  0.00  0.00      MEMB  
 ATOM    115 H13Y DOPS    1       2.088   4.026  49.192  0.00  0.00      MEMB  
-ATOM    116 C314 DOPS    1       2.588   6.036  48.632  19.0  11.0      MEMB  
+ATOM    116 C314 DOPS    1       2.588   6.036  48.632  19.0 11.00      MEMB  
 ATOM    117 H14X DOPS    1       1.488   6.216  48.622  19.0  0.00      MEMB  
 ATOM    118 H14Y DOPS    1       2.968   6.386  49.612  19.0  0.00      MEMB  
 [ C4B ]
-ATOM    119 C315 DOPS    1       3.208   6.886  47.512  20.0  11.0      MEMB  
+ATOM    119 C315 DOPS    1       3.208   6.886  47.512  20.0 11.00      MEMB  
 ATOM    120 H15X DOPS    1       4.308   6.786  47.522  20.0  0.00      MEMB  
 ATOM    121 H15Y DOPS    1       2.958   7.956  47.722  20.0  0.00      MEMB  
 ATOM    122 C316 DOPS    1       2.668   6.536  46.112  0.00  0.00      MEMB  
