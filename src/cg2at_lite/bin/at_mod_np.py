@@ -115,7 +115,8 @@ def fit_np_residue(cg_residue_type, cg_residue, cg_beads, frag_template, frag_ma
 #### arrangement around them)
         if len(residue) > 1:
             groups = {group: [atom for bead in residue[group].values() for atom in bead] for group in residue}
-            fitted[cg_resid], _ = at_mod.correct_group_chirality(fitted[cg_resid], cg_residue_type, frag_template, groups)
+            fitted[cg_resid], _ = at_mod.correct_group_chirality(fitted[cg_resid], cg_residue_type, frag_template, groups,
+                                                                  rigid_only=True)
         fitted[cg_resid] = at_mod.check_hydrogens(fitted[cg_resid])
         fitted[cg_resid] = at_mod.correct_planar_links(fitted[cg_resid], cg_residue_type, frag_template)
         fitted[cg_resid] = at_mod.correct_stereocentres(fitted[cg_resid], cg_residue_type, frag_template)

@@ -1147,8 +1147,40 @@ def write_steered_mdp(loc, posres, time, timestep):
             if g_var.pg_residues:
                 steered_md.write('periodic-molecules = yes\n')
 
+#### force constant (kJ/mol/nm2) of the non-protein heavy-atom restraints (NP) while the protein is steered to the
+#### aligned structure. At the usual 50 the protein, moving from its de novo build to the user's coordinates, pushed
+#### a bound ligand off its CG beads (EptA KLA: 1.1 -> 2.2 A); at 1000 it stays (1.2 A) and the protein reaches the
+#### aligned structure as before (backbone 0.19 A)
+NP_STEER_K = 1000
+
+def np_posres_macro(directory):
+#### makes the non-protein position restraint files in directory take their force constant from the NP_K macro,
+#### defaulting to the value they had (so every other stage, and the files the user gets, are unchanged)
+    import glob
+    for posre in glob.glob(os.path.join(directory, '*_posre.itp')):
+        if os.path.basename(posre).startswith('PROTEIN'):
+            continue
+        with open(posre) as itp:
+            lines = itp.readlines()
+        if any('NP_K' in line for line in lines):
+            continue
+        values, out = set(), []
+        for line in lines:
+            fields = line.split(';')[0].split()
+            if len(fields) >= 5 and fields[0].isdigit() and fields[1] == '1':
+                values.add(tuple(fields[2:5]))
+                line = '{:>6} {:>4}  NP_K  NP_K  NP_K\n'.format(fields[0], fields[1])
+            out.append(line)
+        if len(values) != 1 or len(set(next(iter(values)))) != 1:
+            continue   # mixed force constants: left as they are
+        default = next(iter(values))[0]
+        with open(posre, 'w') as itp:
+            itp.write('#ifndef NP_K\n#define NP_K '+default+'\n#endif\n')
+            itp.writelines(out)
+
 def steer_to_aligned(protein_type, fc, input_file, first=False):
     gen.mkdir_directory(g_var.merged_directory+'STEER')
+    np_posres_macro(g_var.merged_directory)
     print('Applying '+fc.replace('_',' ')+' position restraints', end='\r')
 #### 2 ps of MD per restraint level. The first level starts from the freshly built system, where a strained molecule
 #### (e.g. a lipid's glycerol) can blow up at 2 fs, so it runs at 1 fs. The later levels start from a relaxed system
@@ -1159,7 +1191,8 @@ def steer_to_aligned(protein_type, fc, input_file, first=False):
     attempts = (('', 2000, 0.001),) if first else (('', 1000, 0.002), ('_1fs', 2000, 0.001))
     for suffix, steps, timestep in attempts:
         os.chdir(g_var.merged_directory)
-        write_steered_mdp(g_var.merged_directory+fc+'_posres-nvt'+suffix+'.mdp', '-D'+fc.upper()+'POSRES -DNP', steps, timestep)
+        write_steered_mdp(g_var.merged_directory+fc+'_posres-nvt'+suffix+'.mdp',
+                          '-D'+fc.upper()+'POSRES -DNP -DNP_K='+str(NP_STEER_K), steps, timestep)
         deffnm = base+suffix
         gromacs([g_var.args.gmx+' grompp '+
                 ' -po md_out-merged_cg2at_steer_'+fc+suffix+
