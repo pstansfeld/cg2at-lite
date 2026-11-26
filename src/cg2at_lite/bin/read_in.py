@@ -57,7 +57,7 @@ def read_initial_cg_pdb(test: bool = False) -> str:
     gen.finish_progress('Reading CG input', len(pdb_lines_atoms))
     for key in g_var.cg_residues:
         if len(g_var.cg_residues[key]) == 0:
-            raise CG2ATError('there is a issue with the residue type: ' + key)
+            raise CG2ATError('there is an issue with the residue type: ' + key)
     return box_vec[0]
 
 def filter_input(pdb_lines_raw, CG=True):

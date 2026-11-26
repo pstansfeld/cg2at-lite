@@ -65,7 +65,7 @@ def sanity_check_protein_other(res_type, test=False):
                 fix_atom_wrap(bead_list[resname], bead_list_cg, res_type, residue)
             else:
                 if not test:
-                    print('There is a issue with residue: '+resname+' '+str(residue+1)+'. If expected ignore this message.' )
+                    print('There is an issue with residue: '+resname+' '+str(residue+1)+'. If this is expected, ignore this message.')
                 if res_type != 'OTHER':
                     raise TopologyError('number of atomistic fragments: '+str(len(bead_list[resname]))+' does not equal number of CG beads: '+str(len(bead_list_cg)))
 
@@ -91,7 +91,7 @@ def sanity_check_non_protein(res_type):
             if len(bead_list[res_type]) == len(bead_list_cg):
                 fix_atom_wrap(bead_list[res_type], bead_list_cg, res_type, residue)
             else:
-                print('There is a issue with residue: '+res_type+' '+str(residue+1))
+                print('There is an issue with residue: '+res_type+' '+str(residue+1))
                 raise TopologyError('number of atomistic fragments: '+str(len(bead_list[res_type]))+' does not equal number of CG beads: '+str(len(bead_list_cg)))
 
 def sanity_check():
@@ -112,7 +112,7 @@ def fix_atom_wrap(bead_list_frag, bead_list_cg, section, resid):
                 g_var.cg_residues[section][resid][new_bead] = g_var.cg_residues[section][resid][bead]
                 del g_var.cg_residues[section][resid][bead]
             else:
-                print('There is a issue with residue: '+section+' '+str(resid+1))
+                print('There is an issue with residue: '+section+' '+str(resid+1))
                 print('input file list:\n',sorted(bead_list_cg))
                 print('\ncannot find: '+bead+' or '+new_bead+' in fragment list:')
                 raise FragmentNotFoundError('Fragment bead mismatch. Available: '+str(sorted(bead_list_frag)))

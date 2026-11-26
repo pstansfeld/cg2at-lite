@@ -80,11 +80,11 @@ def ask_if_disulphide(chain, res_1, res_2):
             elif answer.lower() in ['no','n']:
                 return False
             else:
-                print("Oops!  That was a invalid choice")
+                print("Oops! That was an invalid choice.")
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except BaseException:
-            print("Oops!  That was a invalid choice")
+            print("Oops! That was an invalid choice.")
 
 def find_disulphide_bonds_user_sup():
     for chain in g_var.atomistic_protein_input_aligned:

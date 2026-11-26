@@ -364,7 +364,7 @@ def new_box_vec(box_vec, box):
 def strip_header(line: str) -> str:
     line_new = line.replace('[','').split(']', 1)[0]
     if len(line_new.split())>1 or len(line_new.split())==0:
-        raise TopologyError('There is a issue in one of the fragment headers: \n'+line)
+        raise TopologyError('There is an issue in one of the fragment headers: \n'+line)
     return line_new.strip()
 
 def topology_header(line, topology, location):
@@ -444,7 +444,7 @@ def sort_hydration(line_sep, residue):
     if len(line_sep) == 1 and residue not in g_var.hydration:
         g_var.hydration[residue] = line_sep[0]
     else:
-        print('There is a issue with the hydration section of: ', residue)
+        print('There is an issue with the hydration section of: ', residue)
 
 #### Ring grouping. Beads are placed as separate rigid bodies unless grouped, so a ring whose
 #### atoms span several beads (e.g. a Martini 3 inositol or sugar) is torn apart and rebuilt by
@@ -859,7 +859,7 @@ def ask_database(provided, selection_type, test=False):
         except BaseException:
             if test:
                 return True
-            print("Oops!  That was a invalid choice")
+            print("Oops! That was an invalid choice.")
             attempt+=1
             if attempt > 3:
                 raise InputError('Too many invalid choices')
@@ -950,7 +950,7 @@ def ask_for_water_model(water):
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except BaseException:
-            print("Oops!  That was a invalid choice")
+            print("Oops! That was an invalid choice.")
             attempt+=1
             if attempt > 3:
                 raise InputError('Too many invalid choices')
