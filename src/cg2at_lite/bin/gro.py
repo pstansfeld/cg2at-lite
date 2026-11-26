@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import os, sys
+import shlex
+import re
 import numpy as np
 import subprocess 
 from shutil import rmtree
@@ -60,6 +62,18 @@ def collect_input():
         raise GromacsError('Failed to process coarse-grained input file')      
 
 #### gromacs parser
+def _split_gromacs_command(cmd):
+#### preserve the << EOF convention used by pdb2gmx by passing its selections on stdin
+    match = re.search(r'\s<<\s*EOF\b', cmd, flags=re.IGNORECASE)
+    stdin = None
+    if match:
+        stdin = cmd[match.end():].strip()
+        if stdin.upper().endswith('EOF'):
+            stdin = stdin[:-3].rstrip()
+        cmd = cmd[:match.start()]
+    return shlex.split(cmd), stdin
+
+
 def gromacs(gro):
     possible_errors = ['File input/output error:','Error in user input:', 'did not converge to Fmax ', 
                         'but did not reach the requested Fmax ', 'Segmentation fault', 'Fatal error:', 'Cannot read from input', 'threads is only supported with thread-MPI']
@@ -74,17 +88,28 @@ def gromacs(gro):
     #### schedulers (e.g. SLURM) often set OMP_NUM_THREADS
         ntomp = getattr(g_var, 'mdrun_ntomp', None)
         env = None
-        if ntomp and ' mdrun ' in cmd:
-            cmd = cmd.replace(' -pin on', ' -pin off')+' -ntomp '+str(ntomp)
+        args, stdin = _split_gromacs_command(cmd)
+        if ntomp and len(args) > 1 and args[1] == 'mdrun':
+            if '-pin' in args:
+                args[args.index('-pin') + 1] = 'off'
+            else:
+                args.extend(['-pin', 'off'])
+            args.extend(['-ntomp', str(ntomp)])
             env = dict(os.environ, OMP_NUM_THREADS=str(ntomp))
     #### if the flag gromacs is used every gromacs command will be printed to the terminal 
         if g_var.args.v >= 3:
             print('\nrunning gromacs: \n '+cmd+'\n')
-        output = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
-        err, out = output.communicate()
-        out=out.decode("utf-8")
+        output = subprocess.Popen(
+            args,
+            stdin=subprocess.PIPE if stdin is not None else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+        stdout, stderr = output.communicate(stdin.encode('utf-8') if stdin is not None else None)
+        out = stderr.decode("utf-8")
         if not hasattr(g_var, 'gmx_version'):
-            check_gromacs_version(out, err)
+            check_gromacs_version(out, stdout)
     #### all gromacs outputs will be saved into gromacs_outputs within the folder it is run
         with open('gromacs_outputs', 'a') as checks:
             checks.write(out)

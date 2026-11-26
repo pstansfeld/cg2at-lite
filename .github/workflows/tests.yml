@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12", "3.x"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and test runner
+        run: python -m pip install -e . pytest
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  gromacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.12"
+          activate-environment: cg2at-test
+          auto-activate-base: false
+          channels: conda-forge
+
+      - name: Install GROMACS
+        run: conda install --yes gromacs
+        shell: bash -el {0}
+
+      - name: Install package and test runner
+        run: python -m pip install -e . pytest
+        shell: bash -el {0}
+
+      - name: Run tests with GROMACS
+        run: python -m pytest -q
+        shell: bash -el {0}
