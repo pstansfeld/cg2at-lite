@@ -14,6 +14,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -98,6 +99,69 @@ class TestGroupChirality(unittest.TestCase):
         self.assertEqual(mended, 0)
         for x, p in self.xyz.items():
             np.testing.assert_allclose(residue[x]['coord'], p)
+
+    def test_virtual_beads_do_not_count_as_real_fit_beads(self):
+        virtual = {'1': {'atom': 'H1'}}
+        real = {'2': {'atom': 'C1'}}
+        self.assertTrue(self.at_mod.virtual_bead(virtual))
+        self.assertFalse(self.at_mod.virtual_bead(real))
+        self.assertFalse(self.at_mod.virtual_bead({}))
+
+        residue = {}
+        group_fit = {
+            'real1': {'1': {'atom': 'C1'}},
+            'real2': {'2': {'atom': 'C2'}},
+            'real3': {'3': {'atom': 'C3'}},
+            'virtual': {'4': {'atom': 'H1'}},
+        }
+        returned = self.at_mod.correct_group_spin(residue, group_fit, ({}, {}))
+        self.assertIs(returned, residue)
+
+    def test_rigid_only_chirality_leaves_small_virtual_site_group_to_local_repair(self):
+        residue = {
+            1: {'coord': np.array([0.0, 0.0, 0.0])},
+            2: {'coord': np.array([1.0, 0.0, 0.0])},
+            3: {'coord': np.array([0.0, 1.0, 0.0])},
+            4: {'coord': np.array([0.0, 0.0, -1.0])},
+        }
+        original = {atom: value['coord'].copy() for atom, value in residue.items()}
+        frag_template = {
+            'parent': {},
+            'child': {
+                'real1': {4: {'atom': 'C1'}},
+                'real2': {4: {'atom': 'C2'}},
+                'virtual': {5: {'atom': 'H1'}},
+            },
+        }
+        groups = {'parent': [1, 2, 3], 'child': [4]}
+        junctions = (
+            {'parent': (None, []), 'child': ('parent', [])},
+            ['parent', 'child'],
+            {'parent': [], 'child': [(4, (1, 3, 2), 1)]},
+            {
+                1: np.array([0.0, 0.0, 0.0]),
+                2: np.array([1.0, 0.0, 0.0]),
+                3: np.array([0.0, 1.0, 0.0]),
+                4: np.array([0.0, 0.0, 1.0]),
+            },
+        )
+
+        self.assertEqual(
+            np.sign(np.dot(
+                residue[1]['coord'] - residue[4]['coord'],
+                np.cross(residue[3]['coord'] - residue[4]['coord'],
+                         residue[2]['coord'] - residue[4]['coord']),
+            )),
+            -1,
+        )
+        with patch.object(self.at_mod, 'group_junctions', return_value=junctions):
+            result, mended = self.at_mod.correct_group_chirality(
+                residue, RES, frag_template, groups, rigid_only=True
+            )
+
+        self.assertEqual(mended, 0)
+        for atom, xyz in original.items():
+            np.testing.assert_array_equal(result[atom]['coord'], xyz)
 
 
 if __name__ == '__main__':
