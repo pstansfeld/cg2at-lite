@@ -367,7 +367,7 @@ def histidine_protonation(chain, input, chain_ter):
 ### interactive terminal residue selection
 def ask_ter_question(residue, options, chain):
     print('\n please select species for '+residue+' residue in chain '+str(chain))
-    print('\nPlease select a option from below:\n')
+    print('\nPlease select an option from below:\n')
     print('{0:^20}{1:^30}'.format('Selection','termini'))
     print('{0:^20}{1:^30}'.format('---------','----------'))
     sel=[]
@@ -376,13 +376,13 @@ def ask_ter_question(residue, options, chain):
         print('{0:^20}{1:^30}'.format(selection,ter))
     while True:
         try:
-            number = int(input('\nplease select a option: '))
+            number = int(input('\nPlease select an option: '))
             if number < len(options):
                 return number
         except KeyboardInterrupt:
             raise KeyboardInterrupt
         except BaseException:
-            print("Oops!  That was a invalid choice")
+            print("Oops! That was an invalid choice.")
 
 def ask_terminal(sys_info, residue_type):
     system_ter=[]
